@@ -1,0 +1,72 @@
+# Data ----
+data/
+
+# Common data formats, in case data ends up outside data/
+*.csv
+*.tsv
+*.txt
+*.dat
+*.tab
+*.rda
+*.RData
+*.rdata
+*.Rdata
+*.RDATA
+*.rds
+*.RDS
+*.feather
+*.fst
+*.parquet
+*.sav
+*.dta
+*.xlsx
+*.xls
+*.ods
+
+# Compressed archives often used for data
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.bz2
+*.xz
+*.7z
+
+# Large binary objects ----
+*.bin
+*.h5
+*.nc
+*.mat
+
+# Individual work ----
+assignment-1/
+
+# RStudio and R housekeeping ----
+# RStudio's per-user project state (created when you open the project)
+.Rproj.user
+
+# R history and session data
+.Rhistory
+.Rapp.history
+.RData
+.RDataTmp
+.Ruserdata
+
+# Personal settings and credentials - never commit these
+.Renviron
+.httr-oauth
+
+# knitr/pandoc cache and temporary files
+*_cache/
+cache/
+*.utf8.md
+*.knit.md
+
+
+# Operating system and editor files ----
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
+*.bak
+*.log

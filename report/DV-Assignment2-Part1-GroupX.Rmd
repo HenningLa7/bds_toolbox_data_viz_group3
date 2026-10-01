@@ -1,0 +1,66 @@
+---
+title: "DV Assignment 2, Part 1: [Your Title Here]"
+author: "Group X: Firstname Lastname, Firstname Lastname, Firstname Lastname"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+<!--
+HOW TO KNIT THIS FILE
+
+1. Open your group project in RStudio first (the `Project:` button in the
+   top right should show your repo name). Keep this file in `report/`.
+2. Click the `Knit` button at the top of this file (or press
+   Ctrl/Cmd + Shift + K). An .html file with the same name appears next to
+   this .Rmd in `report/`.
+3. Knitting starts from a clean R session: it only knows what is created
+   *in this file*. The setup chunk below sources scripts/00-packages.R and
+   scripts/01-get-data.R, so packages and data are always loaded. The first
+   knit downloads the data, so you need an internet connection.
+
+If knitting fails:
+- "could not find function": the package isn't loaded - add it to
+  scripts/00-packages.R.
+- "object not found": you created it in the Console, not in this file (or
+  in a script that this file doesn't source).
+- "cannot open file": check that the project is open, and use
+  here("folder", "file") for paths instead of typing them out.
+- Check that all code chunks have unique labels.
+- Google the error message you receive, as it often provides clues about
+  what went wrong.
+
+This comment does not show up in the knitted .html, so you can leave it here.
+-->
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# clear environment so knitting only depends on what's in this file
+rm(list = ls())
+
+# installs (if missing) and loads every package this project uses - add any
+# new packages to scripts/00-packages.R, not here
+source("../scripts/00-packages.R")
+
+# downloads the data into data/raw/ if you don't already have it, then loads
+# eindscores, referentieniveaus, schooladviezen and schoolweging into this
+# session - see scripts/01-get-data.R for what each one contains
+source(here("scripts", "01-get-data.R"))
+```
+
+## Research question
+
+*What is your research question? Is it a question of analytics, inference or prediction? Who is the target audience for your final visualization, and how does that shape your choices?*
+
+## Exploratory process
+
+*Describe how you explored the data. Include at least one exploratory visualization below, and a short note on what it shows, and what you learned from it about your research question.*
+
+```{r exploratory-plot}
+```
+
+---
+
+**Before submitting:** run the lintr check on this file, knit it, and push your work to GitHub.
