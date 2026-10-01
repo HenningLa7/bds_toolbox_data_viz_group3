@@ -13,7 +13,7 @@
 **Group members:**
 
 - Henning Lang
--Filip Hlavinka
+- Filip Hlavinka
 
 **Research question:** One sentence stating what you're investigating.
 
