@@ -57,7 +57,8 @@ for (i in packages){
 
 # Downloads the data into data/raw/ if you don't already have it, then loads
 # eindscores, referentieniveaus, schooladviezen and schoolweging
-source("data/get-data.R")
+source("scripts/00-packages.R")
+source("scripts/01-get-data.R")
 ```
 
 
