@@ -1,5 +1,5 @@
 # Data ----
-data/
+data/raw/
 
 # Common data formats, in case data ends up outside data/
 *.csv
