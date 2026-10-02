@@ -5,6 +5,7 @@ date: "`r Sys.Date()`"
 output: html_document
 ---
 
+
 <!--
 HOW TO KNIT THIS FILE
 
@@ -38,10 +39,9 @@ Use this template to help you get started with your assignment. You can add more
 If you make more than one visualization per part, please indicate clearly which visualization we should look at when grading. 
 -->
 
-## Setup environment
 
-```{r setup, message = FALSE, warning = FALSE}
-# echo = TRUR for all code-blocks:
+```{r setup, message = FALSE, warning = FALSE, include = FALSE}
+# echo = TRUE for all code-blocks:
 knitr::opts_chunk$set(echo = TRUE)
 
 # Cleaning:
@@ -50,15 +50,17 @@ cat("\14")
 graphics.off()
 
 # Packages:
-packages <- c("tidyverse", "cowplot", "readODS", "plotly", "lintr")
-for (i in packages){
+packages <- c("tidyverse", "cowplot", "readODS", "plotly", "lintr", "here")
+for (i in packages) {
   if (!require(i, character.only = TRUE)) install.packages(i)
   library(i, character.only = TRUE)
   print(paste("Is package", i, "loaded?", i %in% loadedNamespaces()))
 }
 
 # Load data:
-source("scripts/01-get-data.R")
+getwd()
+file.exists("scripts/01-get-data.R")
+source(here::here("scripts", "01-get-data.R"))
 ```
 
 
@@ -130,21 +132,24 @@ school_data <- ref_levels |>
 
 
 ### Create plot 
-```{r plot-1, fig.height = 5, fig.width = 5.5, fig.align = "center"}
-# First plot:
-plot_a <- school_data |>
+
+```{r plot-1, fig.height = 6, fig.width = 11.5, fig.align = "center"}
+# Element 1:
+# ----------
+
+element_1 <- school_data |>
   filter(provider %in% c("LIB", "IEP", "ROUTE8")) |>
   ggplot(aes(x = score, fill = provider, alpha = provider)) +
-  geom_density(color = "white") +
+  geom_density(color = "white", linewidth = 0.4) +
   scale_fill_manual(values = c(
-    "IEP"    = "#F6BBA3",
-    "LIB"    = "#9FC2ED",
-    "ROUTE8" = "#98DBC3"
+    "IEP"    = "#EB6834",
+    "LIB"    = "#2A78D6",
+    "ROUTE8" = "#1BAF7A"
   )) +
   scale_alpha_manual(values = c(
-    "IEP" = 1,
-    "LIB" = 0.7,
-    "ROUTE8" = 0.7
+    "IEP" = 0.4,
+    "LIB" = 0.4,
+    "ROUTE8" = 0.4
   )) +
   ylab("Density") +
   xlab("% of students reaching target level, per school") +
@@ -152,25 +157,32 @@ plot_a <- school_data |>
   guides(
     color = "none",
     alpha = "none",
-    fill = guide_legend(override.aes = list(color = NA))) +
-  theme_minimal() +
+    fill = guide_legend(override.aes = list(color = NA))
+  ) +
+  theme_minimal(base_size = 13) +
   theme(
     panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(linewidth = 0.7),
     legend.position = "bottom"
   )
 
-# Second plot:
+# Element 2:
+# ----------
 
-# Data preparation:
+# Data preparation for element 2:
 
 providers <- school_data |>
-  filter(provider %in% c("LIB", "IEP", "ROUTE8"),
-         !is.na(schoolweging),
-         schoolweging >= 22) |>
+  filter(
+    provider %in% c("LIB", "IEP", "ROUTE8"),
+    !is.na(schoolweging),
+    schoolweging >= 22
+  ) |>
   mutate(schoolweging_int = floor(schoolweging / 2) * 2) |>
   group_by(provider, schoolweging_int) |>
-  summarize(score = weighted.mean(score, w = n_students, na.rm = TRUE),
-            .groups = "drop")
+  summarize(
+    score = weighted.mean(score, w = n_students, na.rm = TRUE),
+    .groups = "drop"
+  )
 
 endpoints <- providers |>
   group_by(provider) |>
@@ -178,16 +190,20 @@ endpoints <- providers |>
   ungroup()
 
 national_average <- school_data |>
-  filter(!is.na(schoolweging),
-         schoolweging >= 22) |>
+  filter(
+    !is.na(schoolweging),
+    schoolweging >= 22
+  ) |>
   mutate(schoolweging_int = floor(schoolweging / 2) * 2) |>
   group_by(schoolweging_int) |>
-  summarize(score = weighted.mean(score, w = n_students, na.rm = TRUE),
-            .groups = "drop")
+  summarize(
+    score = weighted.mean(score, w = n_students, na.rm = TRUE),
+    .groups = "drop"
+  )
 
-# Plotting:
+# Plotting element 2:
 
-providers |>
+element_2 <- providers |>
   ggplot(aes(x = schoolweging_int, y = score, color = provider)) +
   geom_line(linewidth = 1.2) +
   geom_point(data = endpoints, size = 3, show.legend = FALSE) +
@@ -219,29 +235,84 @@ providers |>
       "ROUTE8" = "ROUTE8\n(n = 7,672)"
     )
   ) +
-  scale_x_continuous(limits = c(21, 41),
-                     breaks = c(22, 26, 30, 34, 38)) +
+  scale_x_continuous(
+    limits = c(21, 41.5),
+    breaks = c(22, 26, 30, 34, 38)
+  ) +
   scale_y_continuous(limits = c(0, 100)) +
   xlab("School weighting (higher = more disadvantaged)") +
   ylab("% reaching target level") +
-  theme_minimal() +
+  annotate(
+    "point",
+    x = 29.4, y = 90,
+    shape = 21, size = 5,
+    fill = "black", color = "black"
+  ) +
+  annotate(
+    "text",
+    x = 29.4, y = 90,
+    label = "i", size = 3.8,
+    fontface = "bold", family = "serif",
+    color = "white"
+  ) +
+  annotate(
+    "text",
+    x = 29.9,
+    y = 90,
+    label = paste0(
+      "Only LIB stays above the national",
+      "\naverage at every school weighting"
+    ),
+    size = 3,
+    hjust = 0,
+    fontface = "bold.italic",
+    color = "#2A78D6"
+  ) +
+  annotate(
+    "curve",
+    x = 31, y = 84, xend = 28, yend = 66,
+    curvature = 0.3,
+    arrow = arrow(length = unit(0.2, "cm")),
+    color = "black", linewidth = 0.6
+  ) +
+  theme_minimal(base_size = 13) +
   theme(
     panel.grid.minor = element_blank(),
+    panel.grid.major = element_line(linewidth = 0.7),
     legend.position = "top"
   )
 
-# Plot 3:
+# Element 3:
+# ----------
 
-ggplot() +
+element_3 <- ggplot() +
   annotate(
     "text",
-    x = 0.5, y = 0.6,
-    label = "The three tests show similar performance across school weights.\nNational average performance remains higher across the range.",
+    x = 0.5, y = 0.5,
+    label = paste0(
+      "LIB has the highest percentage of students reaching ",
+      "the target level, and Route8 the lowest. This gap\n",
+      "holds even when accounting for the socio-economic status of schools."
+    ),
     fontface = "bold",
-    size = 5,
-    hjust = 0.5
+    size = 6,
+    hjust = 0.5,
+    vjust = 0.5,
+    family = "serif"
   ) +
-  theme_void()
+  xlim(0, 1) +
+  ylim(0, 1) +
+  theme_void() +
+  theme(plot.margin = margin(0, 0, 0, 0))
+
+# Combined Plot:
+# ----------
+
+cowplot::plot_grid(
+  element_3,
+  plot_grid(element_1 + theme(legend.position = "none"), element_2, nrow = 1),
+  ncol = 1, rel_heights = c(1, 5)
+)
 ```
 
 
@@ -250,11 +321,196 @@ ggplot() +
 
 ### Prepare data
 
-```{r data-prep-2}
+```{r data-prep-2, message=FALSE, warning=FALSE}
+# one row per (school, provider actually used)
+school_provider <- eindscores |>
+  select(INSTELLINGSCODE, matches("_(AANTAL|GEM)$")) |>
+  pivot_longer(
+    cols = matches("_(AANTAL|GEM)$"),
+    names_to = c("provider", ".value"),
+    names_pattern = "(.+)_(AANTAL|GEM)"
+  ) |>
+  # DUO writes "<5" for small counts -> NA
+  mutate(AANTAL = as.numeric(AANTAL)) |>
+  filter(!is.na(AANTAL), AANTAL > 0, !is.na(GEM), GEM > 0) |>
+  group_by(INSTELLINGSCODE, provider) |>
+  summarise(AANTAL = sum(AANTAL), .groups = "drop")
+
+# one row per school: whichever single provider tested the most of its students
+primary_provider <- school_provider |>
+  group_by(INSTELLINGSCODE) |>
+  slice_max(AANTAL, n = 1, with_ties = FALSE) |>
+  ungroup() |>
+  select(INSTELLINGSCODE, provider)
+
+school_location <- eindscores |>
+  select(INSTELLINGSCODE, INSTELLINGSNAAM_VESTIGING, PROVINCIE, GEMEENTENAAM) |>
+  group_by(INSTELLINGSCODE) |>
+  slice(1) |>
+  ungroup()
+
+school_weights <- schoolweging |>
+  mutate(INSTELLINGSCODE = str_remove(OVT, "\\|.*$")) |>
+  group_by(INSTELLINGSCODE) |>
+  summarise(
+    schoolweging = weighted.mean(schoolweging, w = aantal_leerlingen),
+    .groups = "drop"
+  )
+
+count_cols <- c(
+  "REKENEN_LAGER1F", "REKENEN_1F", "REKENEN_1S",
+  "LV_LAGER1F", "LV_1F", "LV_2F",
+  "TV_LAGER1F", "TV_1F", "TV_2F"
+)
+
+ref_levels <- referentieniveaus |>
+  mutate(across(all_of(count_cols), ~ suppressWarnings(as.numeric(.)))) |>
+  group_by(INSTELLINGSCODE) |>
+  summarise(
+    across(all_of(count_cols), ~ sum(.x, na.rm = TRUE)),
+    .groups = "drop"
+  ) |>
+  mutate(
+    rekenen_n = REKENEN_LAGER1F + REKENEN_1F + REKENEN_1S,
+    taal_lv_n = LV_LAGER1F + LV_1F + LV_2F,
+    taal_tv_n = TV_LAGER1F + TV_1F + TV_2F,
+    score = (
+      100 * REKENEN_1S / rekenen_n +
+        100 * LV_2F / taal_lv_n +
+        100 * TV_2F / taal_tv_n
+    ) / 3,
+    n_students = rekenen_n
+  ) |>
+  filter(rekenen_n > 0, taal_lv_n > 0, taal_tv_n > 0) |>
+  select(INSTELLINGSCODE, score, n_students)
+
+# a school needs a known provider, a computable score, AND a schoolweging
+# value to appear on this chart - unlike Part A's school_data, which kept
+# schoolweging-less schools around for its density plot, this scatter has
+# no use for a school it can't place on the x-axis
+school_data <- ref_levels |>
+  inner_join(primary_provider, by = "INSTELLINGSCODE") |>
+  inner_join(school_location, by = "INSTELLINGSCODE") |>
+  inner_join(school_weights, by = "INSTELLINGSCODE") |>
+  filter(!is.na(schoolweging))
+```
+
+
+### Create scatterplot
+
+```{r plot-2_scatter, fig.align="center", fig.height=5, fig.width=7.5, message=FALSE, warning=FALSE}
+# Preparations for Plotting:
+# ----------
+scatter_data <- school_data |>
+  filter(n_students >= 40) |>
+  mutate(
+    provider = factor(
+      provider,
+      levels = c("AMN", "DIA", "DOE", "IEP", "LIB", "ROUTE8")
+    ),
+    tooltip = paste0(
+      "<b>School:</b> ", INSTELLINGSNAAM_VESTIGING,
+      "<br><b>Provider:</b> ", provider,
+      "<br><b>Doorstroomtoets score:</b> ", round(score, 1), "%",
+      "<br><b>School weighting:</b> ", round(schoolweging, 1),
+      "<br><b>Students tested:</b> ", n_students,
+      "<br><b>Province:</b> ", PROVINCIE,
+      "<br><b>Municipality:</b> ", GEMEENTENAAM
+    )
+  )
+
+provider_colours <- c(
+  "AMN"    = "#EEA1BC",
+  "DIA"    = "#7A72C3",
+  "DOE"    = "#F4B53C",
+  "IEP"    = "#F48661",
+  "LIB"    = "#4C91DE",
+  "ROUTE8" = "#50BE98"
+)
+
+# Non-interactive Plot:
+# ----------
+
+scatter_plot <- ggplot(
+  scatter_data,
+  aes(
+    x = schoolweging,
+    y = score,
+    colour = provider,
+    size = n_students,
+    text = tooltip
+  )
+) +
+  geom_point(alpha = 0.6, stroke = 0.35) +
+  scale_colour_manual(
+    values = provider_colours,
+    name = "Test provider"
+  ) +
+  scale_size_continuous(
+    name = "Number of Students",
+    range = c(1, 6),
+    breaks = c(40, 60, 80, 100, 120)
+  ) +
+  scale_x_continuous(
+    breaks = c(20, 25, 30, 35),
+    minor_breaks = seq(20, 37.5, by = 2.5)
+  ) +
+  scale_y_continuous(
+    breaks = c(25, 50, 75, 100),
+    minor_breaks = seq(12.5, 100, by = 12.5)
+  ) +
+  labs(
+    title = "Doorstroomtoets score by school weighting, per school",
+    subtitle = "Showing schools with 40 or more students",
+    x = "School weighting (higher = more disadvantaged)",
+    y = "% reaching target level"
+  ) +
+  guides(
+    colour = guide_legend(override.aes = list(size = 2)),
+    size = guide_legend(override.aes = list(size = c(2, 3, 4, 5, 6),
+                                            colour = "grey30"))
+  ) +
+  theme_minimal(base_size = 11) +
+  theme(
+    panel.border = element_rect(colour = "grey25", fill = NA, linewidth = 0.5),
+    panel.grid.major = element_line(colour = "grey88", linewidth = 0.4),
+    panel.grid.minor = element_line(colour = "grey93"),
+    plot.title = element_text(size = 15, colour = "black"),
+    plot.subtitle = element_text(size = 12, colour = "black"),
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10)
+  )
+
+scatter_plot
 ```
 
 
 ### Create interactive plot
 
-```{r plot-2}
+```{r plot-2_interactive, fig.align="center", fig.height=5, fig.width=7.5, message=FALSE, warning=FALSE}
+interactive_scatter <- ggplotly(
+  scatter_plot,
+  tooltip = "text"
+) |>
+  layout(
+    title = list(
+      text = paste0(
+        "Doorstroomtoets score by school weighting, per school",
+        "<br><sup>Showing schools with 40 or more students</sup>"
+      ),
+      x = 0
+    ),
+    legend = list(
+      title = list(text = "Test provider")
+    ),
+    hoverlabel = list(
+      bgcolor = "white",
+      bordercolor = "grey50",
+      font = list(color = "black", size = 13)
+    )
+  )
+
+
+interactive_scatter
 ```
+
