@@ -57,7 +57,7 @@ for (i in packages){
   print(paste("Is package", i, "loaded?", i %in% loadedNamespaces()))
 }
 
-# Load the data:
+# Load data:
 source("scripts/01-get-data.R")
 ```
 
