@@ -218,14 +218,13 @@ plot_near_30 <- ggplot(
     y = "Standardized test score (provider-specific z-score)"
   )
 
-# ggsave(
-#   file.path(figures_dir, "standardized-score-heatmap.png"),
-#   plot = plot_score_heatmap,
-#   width = 9,
-#   height = 6,
-#   dpi = 300,
-#   bg = "white"
-# )
+ ggsave(
+   file.path(figures_dir, "disadvanteges_vs.spread.png"),
+  plot = plot_score_by_spread ,
+   width = 9, height = 6,
+   dpi = 300,
+   bg = "white"
+ )
 
 
 
