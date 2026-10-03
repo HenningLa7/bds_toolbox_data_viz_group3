@@ -54,7 +54,7 @@ source(here("scripts", "01-get-data.R"))
 
 *We have decided to look at how spreiding (within school variance of disatvantegness) could affect test scores at teacher advice across different levels of schoolweeging (school disadvantegeness). We though this would me interesting to see if more heterogenous groups with regards to advantaged/disadvantaged backround could me related to better performance. There is some evidence to suggest that students can benefit from more heterogenous backrounds so we though it interesting to try to see if we could see similarphenomenon in this data. We made several exploratory plots included in our test scripts folders but decided to keep only a couple of those here for simplicity. At this point the question is analytical, so we just look at the visualizations to see if there are any discernable patterns which we could later model. The audiance could be anyone interested in this data, but given the severe limitations of what we are measuring it would not be wise to draw big conclusion and present it to the wider public as a certain level nuance is required when interpreting the data.*
 
-```{r setup, include = FALSE}
+```{r variables_data, include = FALSE}
 #Set up of the variables
 
 # code. Average locations to institution level using pupil counts as weights.
@@ -147,7 +147,7 @@ plot_data <- plot_data |>
 
 
 ##Exploratory process
-```{r}
+```{r plot1, echo=FALSE}
 plot_data3 <- scores_by_provider |>
   inner_join(weging_by_school, by = "INSTELLINGSCODE") |>
   filter(
@@ -171,7 +171,7 @@ print(plot_spread_and_weight)
 ```
 *The above graph just visualizes the variance of disatvanagness within school (y-axis) and different lvls of overall disadvantage of school (x-axis).Each point represent an individual institution. After seeing this we though it would be interesting to then see if you the schools in roughly the same schoolweging would have different performance scoresdepending on their spreiding.*
 
-```{r}
+```{r plot2, echo=FALSE}
 
 plot_score_by_spread <- ggplot(
   plot_data,
@@ -194,7 +194,7 @@ print(plot_score_by_spread)
 *The above graph uses standardized test scores(as schools use different providers) to see if student performance is higher with high or low variance of disadvantage.This is done for three lvls of overall disadvantagness: Low,Mid and High. There doesnt seem to be any apparent trend in the relationship we expected. However, we can also see that overall students with higher disadvantagness overall also have overall worse performance.*
 
 
-```{r setup, include = FALSE}
+```{r setup2, include = FALSE}
 # ── 1. Schoolweging ───────────────────────────────────────────────────────────
 # Extract INSTELLINGSCODE from OVT (format "00AP|C1") and aggregate to school
 # level, weighting by number of pupils.
@@ -247,7 +247,7 @@ plot_data2 <- adviezen |>
 
 
 
-```{r}
+```{r plot3,echo=FALSE}
 p3 <- ggplot(plot_data2, aes(x = schoolweging, y = pct_havo_plus)) +
   geom_point(alpha = 0.2, size = 0.8) +
   geom_smooth(method = "lm", se = TRUE, color = "steelblue") +
