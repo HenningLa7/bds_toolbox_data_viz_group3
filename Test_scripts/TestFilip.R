@@ -1,8 +1,9 @@
 # Exploratory plots: schoolweging, spreiding and test scores
 #
-# Refined research question:
+# Research question:
 # Among regular primary schools, how are school-level spreiding and
-# schoolweging associated with average test scores within each provider?
+# schoolweging associated with test scores within each provider?
+
 # These school-level associations are descriptive, not causal.
 
 library(tidyverse)
@@ -16,7 +17,7 @@ if (!dir.exists(figures_dir)) {
   dir.create(figures_dir, recursive = TRUE)
 }
 
-# Read all available input files. Reference-level and advice counts include
+
 # suppressed values, so they are not used to calculate outcome percentages.
 eindscores <- read_delim(
   file.path(data_dir, "eindscores_2024-2025.csv"),
@@ -91,7 +92,7 @@ scores_by_provider <- eindscores |>
     .groups = "drop"
   )
 
-plot_data <- scores_by_provider |>
+plot_data3 <- scores_by_provider |>
   inner_join(weging_by_school, by = "INSTELLINGSCODE") |>
   filter(
     is.finite(mean_score),

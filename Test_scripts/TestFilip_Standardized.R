@@ -1,8 +1,8 @@
 # Exploratory plots: standardized scores by schoolweging and spreiding
 #
 # Refined research question:
-# Among regular primary schools, how is spreiding associated with relative
-# test performance at different levels of schoolweging?
+# Among regular primary schools, how is spreiding(within school disadvantage variance) associated with relative
+# test performance at different levels of schoolweging (school disatvantage?
 # Scores are standardized within provider and then combined, so a z-score
 # indicates relative standing within a provider, not an absolute score.
 
