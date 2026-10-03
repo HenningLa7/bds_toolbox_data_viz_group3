@@ -52,15 +52,11 @@ source(here("scripts", "01-get-data.R"))
 
 ## Research question
 
-*What is your research question? Is it a question of analytics, inference or prediction? Who is the target audience for your final visualization, and how does that shape your choices?*
+*We have decided to look at how spreiding (within school variance of disatvantegness) could affect test scores at teacher advice across different levels of schoolweeging (school disadvantegeness). We though this would me interesting to see if more heterogenous groups with regards to advantaged/disadvantaged backround could me related to better performance. There is some evidence to suggest that students can benefit from more heterogenous backrounds so we though it interesting to try to see if we could see similarphenomenon in this data. We made several exploratory plots included in our test scripts folders but decided to keep only a couple of those here for simplicity. At this point the question is analytical, so we just look at the visualizations to see if there are any discernable patterns which we could later model. The audiance could be anyone interested in this data, but given the severe limitations of what we are measuring it would not be wise to draw big conclusion and present it to the wider public as a certain level nuance is required when interpreting the data.*
 
 ```{r setup, include = FALSE}
 #Set up of the variables
 
-
-
-
-# The ODS identifies locations by institution code plus a different location
 # code. Average locations to institution level using pupil counts as weights.
 weging_by_school <- schoolweging |>
   mutate(INSTELLINGSCODE = str_extract(OVT, "^[^|]+")) |>
@@ -149,8 +145,33 @@ plot_data <- plot_data |>
   )
 ```
 
+
 ##Exploratory process
-```{r }
+```{r}
+plot_data3 <- scores_by_provider |>
+  inner_join(weging_by_school, by = "INSTELLINGSCODE") |>
+  filter(
+    is.finite(mean_score),
+    is.finite(schoolweging),
+    is.finite(spreiding)
+  )
+plot_spread_and_weight <- ggplot(
+  plot_data,
+  aes(x = schoolweging, y = spreiding)
+) +
+  geom_point(alpha = 0.5, size = 1.5) +
+  geom_smooth(method = "lm", se = FALSE, color = "steelblue") +
+  labs(
+    title = "Schoolweging and spreiding",
+    subtitle = "Each point represents one matched regular primary school",
+    x = "Schoolweging (overall disadvantage)",
+    y = "Spreiding (variation in disadvantage)"
+  )
+print(plot_spread_and_weight)
+```
+*The above graph just visualizes the variance of disatvanagness within school (y-axis) and different lvls of overall disadvantage of school (x-axis).Each point represent an individual institution. After seeing this we though it would be interesting to then see if you the schools in roughly the same schoolweging would have different performance scoresdepending on their spreiding.*
+
+```{r}
 
 plot_score_by_spread <- ggplot(
   plot_data,
@@ -170,7 +191,7 @@ plot_score_by_spread <- ggplot(
   )
 print(plot_score_by_spread)
 ```
-
+*The above graph uses standardized test scores(as schools use different providers) to see if student performance is higher with high or low variance of disadvantage.This is done for three lvls of overall disadvantagness: Low,Mid and High. There doesnt seem to be any apparent trend in the relationship we expected. However, we can also see that overall students with higher disadvantagness overall also have overall worse performance.*
 
 
 ```{r setup, include = FALSE}
@@ -224,9 +245,7 @@ plot_data2 <- adviezen |>
 
 ```
 
-## Exploratory process
 
-*Describe how you explored the data. Include at least one exploratory visualization below, and a short note on what it shows, and what you learned from it about your research question.*
 
 ```{r}
 p3 <- ggplot(plot_data2, aes(x = schoolweging, y = pct_havo_plus)) +
@@ -239,7 +258,7 @@ p3 <- ggplot(plot_data2, aes(x = schoolweging, y = pct_havo_plus)) +
   )
 print(p3)
 ```
-
+*Additionaly, the same was performed but instead of standardized scores we use share of advised HAVO or higher. The plots are also this time split according to within school disadvantage variance rather than overall variance as was the case above.These visualization seem to follow a same pattern that there seems to be no effect of spreiding, but definitely an effect of schoolweging*
 ---
 
 **Before submitting:** run the lintr check on this file, knit it, and push your work to GitHub.
