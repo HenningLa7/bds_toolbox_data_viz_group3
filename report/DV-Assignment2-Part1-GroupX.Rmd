@@ -54,11 +54,190 @@ source(here("scripts", "01-get-data.R"))
 
 *What is your research question? Is it a question of analytics, inference or prediction? Who is the target audience for your final visualization, and how does that shape your choices?*
 
+```{r setup, include = FALSE}
+#Set up of the variables
+
+
+
+
+# The ODS identifies locations by institution code plus a different location
+# code. Average locations to institution level using pupil counts as weights.
+weging_by_school <- schoolweging |>
+  mutate(INSTELLINGSCODE = str_extract(OVT, "^[^|]+")) |>
+  filter(
+    !is.na(INSTELLINGSCODE),
+    !is.na(schoolweging),
+    !is.na(spreiding),
+    !is.na(aantal_leerlingen),
+    aantal_leerlingen > 0
+  ) |>
+  group_by(INSTELLINGSCODE) |>
+  summarise(
+    schoolweging = weighted.mean(schoolweging, aantal_leerlingen),
+    spreiding = weighted.mean(spreiding, aantal_leerlingen),
+    .groups = "drop"
+  )
+
+# STANDARDAZING TEST SCORES
+# Provider is used only to standardize otherwise incomparable score scales.
+scores_by_provider <- eindscores |>
+  filter(SOORT_PO == "Bo") |>
+  pivot_longer(
+    cols = matches("^(IEP|ROUTE8|DIA|AMN|DOE|LIB)_(AANTAL|GEM)$"),
+    names_to = c("provider", ".value"),
+    names_pattern = "^(.+)_(AANTAL|GEM)$"
+  ) |>
+  mutate(
+    AANTAL = as.numeric(
+      if_else(
+        str_detect(AANTAL, "^[0-9]+$"),
+        AANTAL,
+        NA_character_
+      )
+    )
+  ) |>
+  filter(AANTAL > 0, !is.na(GEM)) |>
+  group_by(INSTELLINGSCODE, provider) |>
+  summarise(
+    mean_score = weighted.mean(GEM, AANTAL),
+    tested_pupils = sum(AANTAL),
+    .groups = "drop"
+  ) |>
+  group_by(provider) |>
+  mutate(
+    score_z = (mean_score - mean(mean_score)) / sd(mean_score)
+  ) |>
+  ungroup() |>
+  filter(is.finite(score_z))
+
+# Combine any multiple provider results into one school-level value, weighted
+# by tested pupils. Provider names are not used in the visualizations.
+scores_by_school <- scores_by_provider |>
+  group_by(INSTELLINGSCODE) |>
+  summarise(
+    standardized_score = weighted.mean(score_z, tested_pupils),
+    .groups = "drop"
+  )
+plot_data <- scores_by_school |>
+  inner_join(weging_by_school, by = "INSTELLINGSCODE") |>
+  filter(
+    is.finite(standardized_score),
+    is.finite(schoolweging),
+    is.finite(spreiding)
+  )
+
+tertile_cutpoints <- quantile(
+  plot_data$schoolweging,
+  probs = c(1 / 3, 2 / 3),
+  na.rm = TRUE
+)
+plot_data <- plot_data |>
+  mutate(
+    disadvantage_level = case_when(
+      schoolweging <= tertile_cutpoints[[1]] ~ "Lower disadvantage",
+      schoolweging <= tertile_cutpoints[[2]] ~ "Middle disadvantage",
+      TRUE ~ "Higher disadvantage"
+    ),
+    disadvantage_level = factor(
+      disadvantage_level,
+      levels = c(
+        "Lower disadvantage",
+        "Middle disadvantage",
+        "Higher disadvantage"
+      )
+    )
+  )
+```
+
+##Exploratory process
+```{r }
+
+plot_score_by_spread <- ggplot(
+  plot_data,
+  aes(x = spreiding, y = standardized_score)
+) +
+  geom_point(alpha = 0.2, size = 1) +
+  geom_smooth(method = "loess", se = TRUE, color = "steelblue") +
+  facet_wrap(vars(disadvantage_level)) +
+  labs(
+    title = "Relative scores by spreiding across disadvantage levels",
+    subtitle = paste(
+      "Schoolweging groups are data-derived tertiles;",
+      "each point is one school"
+    ),
+    x = "Spreiding (variation in disadvantage)",
+    y = "Standardized test score (provider-specific z-score)"
+  )
+print(plot_score_by_spread)
+```
+
+
+
+```{r setup, include = FALSE}
+# ── 1. Schoolweging ───────────────────────────────────────────────────────────
+# Extract INSTELLINGSCODE from OVT (format "00AP|C1") and aggregate to school
+# level, weighting by number of pupils.
+weging <- schoolweging |>
+  mutate(INSTELLINGSCODE = str_extract(OVT, "^[^|]+")) |>
+  filter(!is.na(schoolweging), !is.na(spreiding), aantal_leerlingen > 0) |>
+  group_by(INSTELLINGSCODE) |>
+  summarise(
+    schoolweging = weighted.mean(schoolweging, aantal_leerlingen),
+    spreiding    = weighted.mean(spreiding,    aantal_leerlingen),
+    .groups = "drop"
+  )
+
+# ── 2. School advice → pct_havo_plus ─────────────────────────────────────────
+# Replace "<5" with 2.5, convert to numeric, then compute the share of
+# students advised for HAVO or higher.
+parse_count <- function(x) {
+  as.numeric(if_else(x == "<5", "2.5", x))
+}
+
+adviezen <- schooladviezen |>
+  filter(SOORT_PO == "Bo") |>
+  mutate(across(VSO:ADVIES_NIET_MOGELIJK, parse_count)) |>
+  mutate(
+    total     = rowSums(across(VSO:ADVIES_NIET_MOGELIJK), na.rm = TRUE),
+    havo_plus = HAVO + HAVO_VWO + VWO
+  ) |>
+  filter(total > 0) |>
+  mutate(pct_havo_plus = havo_plus / total) |>
+  select(INSTELLINGSCODE, pct_havo_plus)
+
+# ── 3. Join ───────────────────────────────────────────────────────────────────
+plot_data2 <- adviezen |>
+  inner_join(weging, by = "INSTELLINGSCODE") |>
+  filter(
+    is.finite(pct_havo_plus),
+    is.finite(schoolweging),
+    is.finite(spreiding)
+  ) |>
+  mutate(
+    spreiding_q = cut(
+      spreiding,
+      breaks = quantile(spreiding, probs = 0:4 / 4, na.rm = TRUE),
+      labels = c("Q1 (low spreiding)", "Q2", "Q3", "Q4 (high spreiding)"),
+      include.lowest = TRUE
+    )
+  )
+
+```
+
 ## Exploratory process
 
 *Describe how you explored the data. Include at least one exploratory visualization below, and a short note on what it shows, and what you learned from it about your research question.*
 
-```{r exploratory-plot}
+```{r}
+p3 <- ggplot(plot_data2, aes(x = schoolweging, y = pct_havo_plus)) +
+  geom_point(alpha = 0.2, size = 0.8) +
+  geom_smooth(method = "lm", se = TRUE, color = "steelblue") +
+  facet_wrap(vars(spreiding_q)) +
+  labs(
+    title = "Option 3: Faceted scatter by spreiding quartile",
+    x = "Schoolweging", y = "Share advised HAVO or higher"
+  )
+print(p3)
 ```
 
 ---
