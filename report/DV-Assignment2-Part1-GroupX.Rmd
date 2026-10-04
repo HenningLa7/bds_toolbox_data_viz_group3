@@ -1,6 +1,6 @@
 ---
-title: "DV Assignment 2, Part 1: [Your Title Here]"
-author: "Group X: Firstname Lastname, Firstname Lastname, Firstname Lastname"
+title: "DV Assignment 2, Part 1: Effects of school disadvantage heterogeneity"
+author: "Group 3: Filip Hlavinka, Henning Lang"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -47,15 +47,26 @@ source("../scripts/00-packages.R")
 # downloads the data into data/raw/ if you don't already have it, then loads
 # eindscores, referentieniveaus, schooladviezen and schoolweging into this
 # session - see scripts/01-get-data.R for what each one contains
-source(here("scripts", "01-get-data.R"))
+source(here::here("scripts", "01-get-data.R"))
 ```
 
-## Research question
+## **Research question and audience**
 
-*We have decided to look at how spreiding (within school variance of disatvantegness) could affect test scores at teacher advice across different levels of schoolweeging (school disadvantegeness). We though this would me interesting to see if more heterogenous groups with regards to advantaged/disadvantaged backround could me related to better performance. There is some evidence to suggest that students can benefit from more heterogenous backrounds so we though it interesting to try to see if we could see similarphenomenon in this data. We made several exploratory plots included in our test scripts folders but decided to keep only a couple of those here for simplicity. At this point the question is analytical, so we just look at the visualizations to see if there are any discernable patterns which we could later model. The audiance could be anyone interested in this data, but given the severe limitations of what we are measuring it would not be wise to draw big conclusion and present it to the wider public as a certain level nuance is required when interpreting the data.*
+<u>Introduction</u>
+
+We have decided to look at how spreiding (within-school variance of disadvantage) could affect test scores/final school advise across different levels of schoolweging (mean school disadvantage). We thought this would be interesting to see if more heterogeneous groups with regard to advantaged/disadvantaged backgrounds (based on parental income and education) could be related to better performance. There is some evidence to suggest that the performance of students can benefit in more heterogeneous social environments, so we thought it would be interesting to analyze if we could observe a similar phenomenon in this data. We made several exploratory plots included in our test scripts folders but decided to keep only a couple of those here for simplicity. At this point, the question is analytical, so we just look at the visualizations to see if there are any discernible patterns which we could later model. The audience could be policymakers and school boards, but given the severe limitations of what we are measuring, a certain level of nuance and expertise is required when interpreting the data.
+
+<u>Short summary</u>
+
+|   |   |
+|---|--------|
+| `Research question`   | *RQ5 (Own RQ)*: Either **Does within-school heterogeneity in students' socioeconomic disadvantage predict students' test scores after controlling for the school's average level of student socioeconomic disadvantage?** or **Does within-school heterogeneity in students' socioeconomic disadvantage predict the share of students receiving a HAVO-or-higher secondary-school advice after controlling for the school's average level of student socioeconomic disadvantage?** | 
+| `Analytical approach` | Analytical | 
+| `Target audience`     | Policymakers and school boards interested in how school composition affects educational opportunity (But with caution and some limitations when interpreting it). |
+
 
 ```{r variables_data, include = FALSE}
-#Set up of the variables
+# Set up of the variables
 
 # code. Average locations to institution level using pupil counts as weights.
 weging_by_school <- schoolweging |>
@@ -146,8 +157,12 @@ plot_data <- plot_data |>
 ```
 
 
-##Exploratory process
-```{r plot1, echo=FALSE}
+## **Exploratory plots**
+
+
+**Plot 1**
+
+```{r ex_plot1, echo=FALSE, message=FALSE, warning=FALSE}
 plot_data3 <- scores_by_provider |>
   inner_join(weging_by_school, by = "INSTELLINGSCODE") |>
   filter(
@@ -169,10 +184,15 @@ plot_spread_and_weight <- ggplot(
   )
 print(plot_spread_and_weight)
 ```
-*The above graph just visualizes the variance of disatvanagness within school (y-axis) and different lvls of overall disadvantage of school (x-axis).Each point represent an individual institution. After seeing this we though it would be interesting to then see if you the schools in roughly the same schoolweging would have different performance scoresdepending on their spreiding.*
 
-```{r plot2, echo=FALSE}
+<u>Description</u>
 
+The above graph visualizes the variance of disadvantage within school (y-axis) and different levels of overall disadvantage of the school (x-axis). Each point represents an individual institution. After seeing this, we thought it would be interesting to then see if schools in roughly the same schoolweging would have different performance scores depending on their spreiding.
+
+
+**Plot 2**
+
+```{r ex_plot2, echo=FALSE, message=FALSE, warning=FALSE}
 plot_score_by_spread <- ggplot(
   plot_data,
   aes(x = spreiding, y = standardized_score)
@@ -191,7 +211,10 @@ plot_score_by_spread <- ggplot(
   )
 print(plot_score_by_spread)
 ```
-*The above graph uses standardized test scores(as schools use different providers) to see if student performance is higher with high or low variance of disadvantage.This is done for three lvls of overall disadvantagness: Low,Mid and High. There doesnt seem to be any apparent trend in the relationship we expected. However, we can also see that overall students with higher disadvantagness overall also have overall worse performance.*
+
+<u>Description</u>
+
+The above graph uses standardized test scores (as schools use different providers) to see if student performance is higher with high or low variance of disadvantage. This is done for three levels of overall disadvantage: Low, Mid, and High. There doesn't seem to be any apparent trend in the relationship we expected. However, we can also see that, overall, students with higher disadvantage also have overall worse performance.
 
 
 ```{r setup2, include = FALSE}
@@ -204,7 +227,7 @@ weging <- schoolweging |>
   group_by(INSTELLINGSCODE) |>
   summarise(
     schoolweging = weighted.mean(schoolweging, aantal_leerlingen),
-    spreiding    = weighted.mean(spreiding,    aantal_leerlingen),
+    spreiding = weighted.mean(spreiding, aantal_leerlingen),
     .groups = "drop"
   )
 
@@ -227,7 +250,7 @@ adviezen <- schooladviezen |>
   select(INSTELLINGSCODE, pct_havo_plus)
 
 # ── 3. Join ───────────────────────────────────────────────────────────────────
-plot_data2 <- adviezen |>
+plot_data <- adviezen |>
   inner_join(weging, by = "INSTELLINGSCODE") |>
   filter(
     is.finite(pct_havo_plus),
@@ -242,23 +265,63 @@ plot_data2 <- adviezen |>
       include.lowest = TRUE
     )
   )
-
 ```
 
 
+**Plot 3**
 
-```{r plot3,echo=FALSE}
-p3 <- ggplot(plot_data2, aes(x = schoolweging, y = pct_havo_plus)) +
+```{r plot3, echo=FALSE, message=FALSE, warning=FALSE}
+slope_data <- plot_data |>
+  mutate(
+    weging_q = cut(
+      schoolweging,
+      breaks = quantile(schoolweging, probs = 0:4 / 4, na.rm = TRUE),
+      labels = c("Q1 (least disadvantaged)", "Q2", "Q3",
+                 "Q4 (most disadvantaged)"),
+      include.lowest = TRUE
+    )
+  ) |>
+  group_by(spreiding_q, weging_q) |>
+  summarise(mean_havo = mean(pct_havo_plus), .groups = "drop")
+p3 <- ggplot(
+  slope_data,
+  aes(x = weging_q, y = mean_havo, color = spreiding_q, group = spreiding_q)
+) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 2.5) +
+  scale_color_viridis_d(name = "Spreiding quartile") +
+  labs(
+    title = "School advise by schools' disadvantage mean and heterogeneity",
+    x = "Schoolweging quartile", y = "Share advised HAVO or higher"
+  )
+print(p3)
+```
+
+<u>Description</u>
+
+Additionally, we performed the same analysis, but instead of standardized scores, we used the share of students advised to HAVO or higher as outcome (i. e. the final school advise). We used schoolweging quartiles on the x-axis and the spreiding-quartiles as lines in different colours. The graph shows that given the particular effect of schoolweging there is no relevant additional effect of within-school disadvantage heterogeneity. 
+
+
+**Plot 4**
+
+```{r plot4, echo=FALSE, message=FALSE, warning=FALSE}
+p4 <- ggplot(plot_data, aes(x = schoolweging, y = pct_havo_plus)) +
   geom_point(alpha = 0.2, size = 0.8) +
   geom_smooth(method = "lm", se = TRUE, color = "steelblue") +
   facet_wrap(vars(spreiding_q)) +
   labs(
-    title = "Option 3: Faceted scatter by spreiding quartile",
+    title = "School advise by schools' disadvantage mean and heterogeneity",
     x = "Schoolweging", y = "Share advised HAVO or higher"
   )
-print(p3)
+print(p4)
 ```
-*Additionaly, the same was performed but instead of standardized scores we use share of advised HAVO or higher. The plots are also this time split according to within school disadvantage variance rather than overall variance as was the case above.These visualization seem to follow a same pattern that there seems to be no effect of spreiding, but definitely an effect of schoolweging*
----
 
-**Before submitting:** run the lintr check on this file, knit it, and push your work to GitHub.
+<u>Description</u>
+
+In this plot again the share of students advised to HAVO or higher was the considered outcome. The plots are also this time split according to within-school disadvantage variance rather than overall variance, as it was the case above. These visualizations seem to follow the same pattern: there seems to be no aditional effect of spreiding, but definitely an effect of schoolweging.
+
+
+## **Feedback**
+
+We'd appreciate your **feedback on the second plot**. Thanks!
+

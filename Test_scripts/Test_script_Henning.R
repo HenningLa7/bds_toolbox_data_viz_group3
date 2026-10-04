@@ -123,7 +123,7 @@ p4 <- ggplot(
   geom_point(size = 2.5) +
   scale_color_viridis_d(name = "Spreiding quartile") +
   labs(
-    title = "Option 5: Slope graph",
+    title = "Option 4: Slope graph",
     x = "Schoolweging quartile", y = "Share advised HAVO or higher"
   )
 
