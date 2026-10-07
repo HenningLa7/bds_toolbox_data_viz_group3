@@ -414,7 +414,7 @@ final_plot
 
 # In the Rmd chunk header, use e.g.: fig.width = 16, fig.height = 9,
 # out.width = "100%". To save separately:
-# ggsave("report/final-plot.png", final_plot, width = 16, height = 9, dpi = 300)
+# ggsave("report/final-plot.png", final_plot, width = 16, height = 9, dpi = 300
 
 
 
