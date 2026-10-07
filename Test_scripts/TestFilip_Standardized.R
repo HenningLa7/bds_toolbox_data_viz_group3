@@ -168,25 +168,8 @@ near_30_data <- plot_data |>
 
 message("Schools with schoolweging from 28 to 32: ", nrow(near_30_data), ".")
 
-plot_score_heatmap <- ggplot(
-  heatmap_data,
-  aes(x = weight_bin, y = spread_bin, fill = median_score_z)
-) +
-  geom_tile() +
-  scale_fill_viridis_c(
-    option = "C",
-    name = "Median score\n(z-score)"
-  ) +
-  labs(
-    title = "Relative test scores across schoolweging and spreiding",
-    subtitle = paste(
-      "Tiles show median standardized scores; cells with fewer than",
-      "5 schools are omitted"
-    ),
-    x = "Schoolweging (overall disadvantage)",
-    y = "Spreiding (variation in disadvantage)"
-  ) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
 
 plot_score_by_spread <- ggplot(
   plot_data,
@@ -218,17 +201,146 @@ plot_near_30 <- ggplot(
     y = "Standardized test score (provider-specific z-score)"
   )
 
- ggsave(
-   file.path(figures_dir, "disadvanteges_vs.spread.png"),
-  plot = plot_score_by_spread ,
-   width = 9, height = 6,
-   dpi = 300,
-   bg = "white"
- )
+ 
 
 
 
 
-print(plot_score_heatmap)
+
 print(plot_score_by_spread)
 print(plot_near_30)
+
+####testing
+summary(plot_data$spreiding)
+range(plot_data$spreiding, na.rm = TRUE)''
+sort(unique(plot_data$spreiding))
+hist(plot_data$spreiding)
+
+
+
+# Centre spreiding: 0 now represents average spreiding
+plot_data$spreiding_c <- plot_data$spreiding -
+  mean(plot_data$spreiding, na.rm = TRUE)
+
+# Model without different slopes across disadvantage groups
+model_no_interaction <- lm(
+  standardized_score ~ spreiding_c + disadvantage_level,
+  data = plot_data
+)
+
+# Model where the spreiding-performance relationship may differ by group
+model_interaction <- lm(
+  standardized_score ~ spreiding_c * disadvantage_level,
+  data = plot_data
+)
+model_spreiding<-lm(
+  standardized_score ~ spreiding_c,
+  data = plot_data)
+summary(model_spreiding)
+summary(model_interaction)
+
+# Does allowing different slopes improve the model?
+anova(model_no_interaction, model_interaction)
+
+
+par(mfrow = c(2, 2))
+plot(model_interaction)
+par(mfrow = c(1, 1))
+
+
+
+spreiding_scores<-ggplot(
+  plot_data,
+  aes(x = spreiding_c, y = standardized_score)
+) +
+  geom_point(alpha = 0.4, colour = "grey40") +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    se = TRUE,
+    colour = "#0072B2",
+    linewidth = 1
+  ) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "grey60") +
+  geom_vline(xintercept = 0, linetype = "dashed", colour = "grey60") +
+  labs(
+    x = "Within-school disadvantage spread (centred)",
+    y = "Standardized performance score"
+  ) +
+  theme_minimal()
+
+spreiding_scores
+
+
+overall_spread_scores<-ggplot(
+  plot_data,
+  aes(
+    x = spreiding_c,
+    y = standardized_score,
+    colour = disadvantage_level
+  )
+) +
+  geom_point(alpha = 0.35) +
+  geom_smooth(
+    method = "lm",
+    formula = y ~ x,
+    se = TRUE,
+    linewidth = 1
+  ) +
+  geom_hline(yintercept = 0, linetype = "dashed", colour = "grey60") +
+  labs(
+    x = "Within-school disadvantage spread (centred)",
+    y = "Standardized performance score",
+    colour = "Overall school disadvantage"
+  ) +
+  theme_minimal()
+overall_spread_scores
+
+
+
+###
+# Keep complete observations only
+analysis_data <- subset(
+  plot_data,
+  !is.na(standardized_score) &
+    !is.na(spreiding_c) &
+    !is.na(disadvantage_level)
+)
+
+# Make sure the variable is a factor
+
+
+# Run a separate linear regression in each tertile
+models_tertile <- lapply(
+  split(analysis_data, analysis_data$disadvantage_level),
+  function(data_group) {
+    lm(standardized_score ~ spreiding_c, data = data_group)
+  }
+)
+
+# View the full regression output for each group
+lapply(models_tertile, summary)
+
+results_tertile <- do.call(
+  rbind,
+  lapply(names(models_tertile), function(group) {
+    
+    model <- models_tertile[[group]]
+    coefficient <- summary(model)$coefficients["spreiding_c", ]
+    ci <- confint(model)["spreiding_c", ]
+    
+    data.frame(
+      disadvantage_level = group,
+      n_schools = nobs(model),
+      b_spreiding = coefficient["Estimate"],
+      SE = coefficient["Std. Error"],
+      t = coefficient["t value"],
+      p = coefficient["Pr(>|t|)"],
+      CI_lower = ci[1],
+      CI_upper = ci[2],
+      R_squared = summary(model)$r.squared
+    )
+  })
+)
+
+results_tertile
