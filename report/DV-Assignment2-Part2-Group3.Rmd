@@ -750,6 +750,15 @@ final_plot <- wrap_elements(full = p_legend) / plot_spacer() / bottom_row +
     )
   )
 final_plot
+
+ggsave(
+  "final_plot.pdf",
+  plot   = final_plot,
+  width  = 14,
+  height = 8.5,
+  units  = "in",
+  device = cairo_pdf
+)
 ```
 
 ## **Conclusion**
