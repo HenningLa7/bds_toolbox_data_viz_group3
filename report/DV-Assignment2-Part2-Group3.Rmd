@@ -13,7 +13,7 @@ output:
 rm(list = ls())
 
 # Packages:
-packages <- c("marginaleffects", "patchwork")
+packages <- c("marginaleffects", "patchwork", "flextable")
 for (i in packages) {
   if (!require(i, character.only = TRUE)) install.packages(i)
   library(i, character.only = TRUE)
@@ -25,15 +25,15 @@ source(here::here("scripts", "00-packages.R"))
 source(here::here("scripts", "01-get-data.R"))
 ```
 
-## Research question
+# **Research question and target audience**
 
 *What are you investigating, and why does it matter? Who is the target audience for your final visualization, and how does that shape your choices? You can start from what you wrote in Part 1.*
 
-## Exploratory process
+# **Exploratory process**
 
-*Describe how you explored the data before settling on your final visualization. Include at least one exploratory plot below (this can be the one from Part 1, or an updated one), and a short note on what it told you and how it influenced your final visualization.*
+## Initial Data Preparation
 
-```{r variable-prep, echo=FALSE, include=FALSE}
+```{r variable-prep, echo=FALSE}
 # Save school form variables
 advice_cols <- c(
   "VSO", "PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT",
@@ -79,10 +79,24 @@ school_data <- school_context |>
     !is.na(schoolweging), !is.na(spreiding),
     !is.na(HAVO_higher), n_students_advice > 0
   )
+
+head(school_data) |>
+  flextable::flextable() |>
+  flextable::theme_booktabs() |>
+  flextable::autofit()
 ```
 
+In the joined dataset the following variables are particularly important:
 
-```{r first-plot, echo=FALSE}
+| Variable name in data | Original dataset | Variable name in plots | Explanation | Predictor/Outcome |
+|---|---|---|-------------|
+| `spreiding` | `schoolweging` | Socio-economic Heterogeneity | Differences in socio-economic disadvantage among pupils within a school; higher values indicate greater heterogeneity. |  **Predictor** |
+| `schoolweging` | `schoolweging` | Avg. socio-economic disadvantage | Measure of the mean school population’s socio-economic disadvantage; higher values indicate greater disadvantage. | **Predictor** |
+| `HAVO_higher` | Derived from `schooladviezen` | HAVO+ advice | Percentage of recorded final recommendations that are HAVO, HAVO/VWO, or VWO | **Outcome** |
+
+## First plot on Havo+ advice
+
+```{r first-plot, echo=FALSE, fig.width = 12, fig.height = 6, fig.align = "center"}
 # ------------------------------------------------------------------------------
 # First Exploratory plot
 
@@ -143,6 +157,11 @@ ggplot(advice_share, aes(x = advice, y = share, fill = havo_plus)) +
   )
 ```
 
+<u>Description</u>
+
+We placed the cut between VMBO-GT/HAVO and HAVO to obtain two roughly similar-sized groups of recommendations. This also follows the codebook’s track ordering: HAVO, HAVO/VWO, and VWO represent the higher academic recommendations, and we calculate their combined share within each school.
+
+## Second plot on bivariate relationships
 
 ```{r second-plot, echo=FALSE}
 # ------------------------------------------------------------------------------
@@ -173,7 +192,13 @@ adv <- "HAVO or higher advice (%)"
   ) &
   theme_minimal() &
   theme(legend.position = "bottom")
+```
 
+<u>Description</u>
+
+The relationship between socio-economic heterogeneity and HAVO+ advice is not overt, whereas avg. socio-economic disadvantage appears to have a negative linear relationship with HAVO+ advice. Avg. Disadvantage and heterogeneity appear to follow an inverted-U-shaped.
+
+```{r second-prep, echo=FALSE}
 # ------------------------------------------------------------------------------
 # Subsequent data preparation
 
@@ -202,21 +227,33 @@ school_data <- school_data |>
     weging_trim_c = weging_trimmed - mean(weging_trimmed),
     spreiding_c = spreiding - mean(spreiding)
   )
+
+head(school_data) |>
+  flextable::flextable() |>
+  flextable::theme_booktabs() |>
+  flextable::autofit()
 ```
 
+<u>Description</u>
+
+...
 
 ```{r third-plot, echo=FALSE}
 # ------------------------------------------------------------------------------
 # Third exploratory plot
 
 bin_colours <- c(
-  "1" = "#440154", "2" = "#482878", "3" = "#3E4989",
-  "4" = "#31688E", "5" = "#26828E", "6" = "#1F9E89",
-  "7" = "#35B779", "8" = "#52C569", "9" = "#86D549",
-  "10" = "#C2DF23"
+  "1"  = "#071440",  # deep navy
+  "2"  = "#10286E",  # dark royal blue
+  "3"  = "#1A459F",  # royal blue
+  "4"  = "#2563C4",  # strong blue
+  "5"  = "#3F86DB",  # sky blue 
+  "6"  = "#4A9C8A",  # muted teal
+  "7"  = "#5BA777",  # muted green
+  "8"  = "#78B067",  # soft green
+  "9"  = "#9BB95E",  # olive green
+  "10" = "#BCC45C"   # muted yellow-green
 )
-
-
 
 bin_info <- school_data |>
   summarise(
@@ -229,9 +266,8 @@ bin_info <- school_data |>
     range = paste(round(lo, 1), round(hi, 1), sep = "-")
   )
 
-# >>> CHANGE LINE AND OUTSIDE-POINT COLOURS HERE <<<
-bin_line_colour <- "grey45"
-trim_line_colour <- "red"
+bin_line_colour      <- "grey45"
+trim_line_colour     <- "red"
 outside_point_colour <- "grey75"
 
 # Preserve the full dataset BEFORE trimming
@@ -327,9 +363,10 @@ plot_spread_and_weight2 <- ggplot(
     legend.key.height = grid::unit(0.2, "cm")
   )
 
-print(plot_spread_and_weight2)
+plot_spread_and_weight2
 ```
 
+# **Statistical MOdelling**
 
 ```{r regressions, echo=FALSE,}
 # ------------------------------------------------------------------------------
@@ -355,27 +392,13 @@ par(old_par)
 # --> Non-normality at the tails can be seen. 
 ```
 
-## Final visualization
+# **Final visualization**
 
 *Your final, explanatory visualization goes below. Include a short write-up: what does it communicate, why is this the best way to communicate it, and how robust is the finding?*
 
 ```{r final-plot, fig.width = 14, fig.height = 7.5, dpi = 200, out.width = "100%", fig.align = "center", fig.alt = "Slopes of socio-economic heterogeneity on HAVO+ advice per disadvantage bin", echo = FALSE, warning = FALSE, message = FALSE}
 # ------------------------------------------------------------------------------
 # Final visualization - shared settings
-
-# Reusable bin colours (1 = least, 10 = most disadvantaged); edit freely
-bin_colours <- c(
-  "1"  = "#071440",  # deep navy
-  "2"  = "#10286E",  # dark royal blue
-  "3"  = "#1A459F",  # royal blue
-  "4"  = "#2563C4",  # strong blue
-  "5"  = "#3F86DB",  # sky blue 
-  "6"  = "#4A9C8A",  # muted teal
-  "7"  = "#5BA777",  # muted green
-  "8"  = "#78B067",  # soft green
-  "9"  = "#9BB95E",  # olive green
-  "10" = "#BCC45C"   # muted yellow-green
-)
 
 # Labels for the axis
 het <- "Socio-economic heterogeneity"
