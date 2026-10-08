@@ -27,7 +27,8 @@ source(here::here("scripts", "01-get-data.R"))
 
 # **Research question and target audience**
 
-*What are you investigating, and why does it matter? Who is the target audience for your final visualization, and how does that shape your choices? You can start from what you wrote in Part 1.*
+*RQ:How is within-school socioeconomic heterogeneity associated with the proportion of students receiving HAVO-or-higher advice, with control for  average socioeconomic disadvantage.* <br>
+*Audience: Educational researchers interested in how socioeconomic heterogeneity within schools relates to student performance, with attention to the limitations of school-level data and causal interpretation.*
 
 # **Exploratory process**
 
