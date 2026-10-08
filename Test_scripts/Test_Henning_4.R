@@ -235,7 +235,7 @@ bin_colours <- c(
 # Labels for the axis
 het <- "Socio-economic heterogeneity"
 adv <- "HAVO+ advice"
-dis <- "Average socio-economic disadvantage"
+dis <- "Avg. socio-economic disadvantage"
 
 # Shared legend style, so that all legends have the same text and key size
 legend_theme <- theme(
@@ -252,7 +252,6 @@ legend_theme <- theme(
 slope_data <- marginaleffects::avg_slopes(
   model_1, variables = "spreiding_c", by = "weging_bin"
 )
-slope_data
 
 # Fitted lines with HC3 robust 95% bands over each bin's observed range
 spreiding_mean <- mean(school_data$spreiding)
@@ -402,7 +401,20 @@ final_subtitle <- paste(
 )
 
 # ------------------------------------------------------------------------------
-# Final visualization - legend bins
+# Final visualization legend bins 
+
+# Height of the legend panel in cm (fixed; used in plot_layout() below)
+top_cm <- 2.4
+# Approximate cm per y-unit of the panel (y runs from -1 to 1)
+cm_per_y <- (top_cm - 0.15) / 2
+
+# Strip geometry (x: 0-100 across the panel; y: -1 to 1)
+strip_x0 <- 41
+tile_w <- 5.7
+tile_h <- 0.8
+tile_yc <- 0.02
+y_top <- 0.82
+y_bottom <- -0.74
 
 # Bin summary: range of average disadvantage and number of schools per bin
 bin_info <- school_data |>
@@ -412,49 +424,104 @@ bin_info <- school_data |>
   ) |>
   mutate(
     x = as.integer(weging_bin),
+    tile_x = strip_x0 + (x - 0.5) * tile_w,
     txt = if_else(x <= 6, "white", "black"),
     range = paste(round(lo, 1), round(hi, 1), sep = "-")
   )
 
-# Create the legend
-p_legend <- ggplot(bin_info, aes(x = x)) +
-  geom_tile(aes(y = 0, fill = weging_bin), width = 0.96, height = 1) +
-  geom_text(
-    aes(y = 0.25, label = paste("Bin", x), colour = txt),
-    fontface = "bold", size = 3.3
+# One note row below the strip: tile ranges, schools per bin, trimming
+strip_note <- paste0(
+  "Tile numbers = range of average disadvantage. ",
+  paste(unique(range(bin_info$n_schools)), collapse = "-"),
+  " schools per bin. ",
+  "(Lowest and highest 10% of schools excluded, because ...)"
+)
+
+# Explanation box: bold term (left column) + short sentence (right column)
+box_font <- 3.2
+box_items <- data.frame(
+  term = c(
+    "HAVO+ advice:",
+    "Avg. Socio-economic disadvantage:",
+    "Socio-economic heterogeneity:"
+  ),
+  text = c(
+    "Share of pupils with a final advice of HAVO, HAVO/VWO or VWO.",
+    "School average (CBS); higher = more disadvantaged. Forms the bins.",
+    "Differences between pupils within a school; higher = more mixed."
+  )
+)
+box_items$text <- stringr::str_wrap(box_items$text, width = 66)
+
+# Spread the items evenly over the same height as the right-hand strip
+line_h <- box_font * ggplot2::.pt * 1.2 * 0.95 / 72 * 2.54 / cm_per_y
+box_items$n_lines <- stringr::str_count(box_items$text, "\n") + 1
+text_h <- sum(box_items$n_lines) * line_h
+item_gap <- max((y_top - y_bottom - text_h) / (nrow(box_items) - 1), 0.04)
+box_items$y <- y_top -
+  c(0, cumsum(head(box_items$n_lines * line_h + item_gap, -1)))
+
+# Create the legend panel: one box around explanation and bin strip
+p_legend <- ggplot(bin_info) +
+  annotate(
+    "rect",
+    xmin = 0.4, xmax = 99.6, ymin = -0.94, ymax = 0.94,
+    fill = "grey97", colour = "grey30", linewidth = 0.3
   ) +
-  geom_text(aes(y = 0, label = range, colour = txt), size = 3.1) +
+  # explanation text
   geom_text(
-    aes(y = -0.25, label = paste(n_schools, "schools"), colour = txt),
-    size = 3.1
+    data = box_items,
+    aes(x = 2, y = y, label = term),
+    hjust = 0, vjust = 1, fontface = "bold", size = box_font,
+    colour = "grey15"
+  ) +
+  geom_text(
+    data = box_items,
+    aes(x = 14, y = y, label = text),
+    hjust = 0, vjust = 1, size = box_font, lineheight = 0.95,
+    colour = "grey15"
+  ) +
+  # compressed bin strip
+  geom_tile(
+    aes(x = tile_x, y = tile_yc, fill = weging_bin),
+    width = tile_w * 0.94, height = tile_h
+  ) +
+  geom_text(
+    aes(x = tile_x, y = tile_yc + 0.17, label = paste("Bin", x), colour = txt),
+    fontface = "bold", size = 3.2
+  ) +
+  geom_text(
+    aes(x = tile_x, y = tile_yc - 0.17, label = range, colour = txt),
+    size = 2.9
   ) +
   annotate(
-    "text", x = 5.5, y = 0.78, fontface = "bold", size = 3.5,
-    label = paste(
-      "Schools grouped into 10 equal-sized bins of",
-      "average socio-economic disadvantage"
-    )
+    "text", x = strip_x0 + 5 * tile_w, y = 0.66, fontface = "bold",
+    size = 3.3, colour = "grey15",
+    label = "10 equal-sized bins of average socio-economic disadvantage"
   ) +
   annotate(
-    "text", x = 0.52, y = 0.78, hjust = 0, fontface = "italic", size = 3.3,
+    "text", x = strip_x0, y = 0.66, hjust = 0, fontface = "italic",
+    size = 3.1, colour = "grey15",
     label = "\u2190 Less disadvantaged"
   ) +
   annotate(
-    "text", x = 10.48, y = 0.78, hjust = 1, fontface = "italic", size = 3.3,
+    "text", x = strip_x0 + 10 * tile_w, y = 0.66, hjust = 1,
+    fontface = "italic", size = 3.1, colour = "grey15",
     label = "More disadvantaged \u2192"
   ) +
+  # one note row: tile ranges, schools per bin, trimming
   annotate(
-    "text", x = 5.5, y = -0.68, size = 2.8, colour = "grey40",
-    label = paste(
-      "(Schools with the 10% lowest and 10% highest average disadvantage",
-      "are excluded, because ...)"
-    )
+    "text", x = strip_x0 + 5 * tile_w, y = -0.62, size = 2.7,
+    colour = "grey30", label = strip_note
   ) +
   scale_fill_manual(values = bin_colours) +
   scale_colour_identity() +
-  coord_cartesian(xlim = c(0.5, 10.5), ylim = c(-0.8, 0.95)) +
+  coord_cartesian(xlim = c(0, 100), ylim = c(-1, 1), expand = FALSE) +
   theme_void() +
-  theme(legend.position = "none")
+  theme(
+    legend.position = "none",
+    plot.margin = margin(2, 2, 2, 2)
+  )
 
 # ------------------------------------------------------------------------------
 # Final plot
@@ -464,7 +531,7 @@ bottom_row <- (p_left | p_right) + plot_layout(widths = c(3, 2))
 
 # Create final plot:
 final_plot <- p_legend / bottom_row +
-  plot_layout(heights = c(1, 6.5)) +
+  plot_layout(heights = unit(c(top_cm, 1), c("cm", "null"))) +
   plot_annotation(
     title = final_title,
     subtitle = final_subtitle,
