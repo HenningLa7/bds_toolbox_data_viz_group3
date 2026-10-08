@@ -33,7 +33,7 @@ source(here::here("scripts", "01-get-data.R"))
 
 *Describe how you explored the data before settling on your final visualization. Include at least one exploratory plot below (this can be the one from Part 1, or an updated one), and a short note on what it told you and how it influenced your final visualization.*
 
-```{r exploratory-plot}
+```{r variable-prep, echo=FALSE, include=FALSE}
 # Save school form variables
 advice_cols <- c(
   "VSO", "PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT",
@@ -79,7 +79,10 @@ school_data <- school_context |>
     !is.na(schoolweging), !is.na(spreiding),
     !is.na(HAVO_higher), n_students_advice > 0
   )
+```
 
+
+```{r first-plot, echo=FALSE}
 # ------------------------------------------------------------------------------
 # First Exploratory plot
 
@@ -138,7 +141,10 @@ ggplot(advice_share, aes(x = advice, y = share, fill = havo_plus)) +
     panel.grid.minor.y = element_blank(),
     axis.text.x = element_text(angle = 45, hjust = 1)
   )
+```
 
+
+```{r second-plot, echo=FALSE}
 # ------------------------------------------------------------------------------
 # Second exploratory plot
 
@@ -196,12 +202,136 @@ school_data <- school_data |>
     weging_trim_c = weging_trimmed - mean(weging_trimmed),
     spreiding_c = spreiding - mean(spreiding)
   )
+```
 
+
+```{r third-plot, echo=FALSE}
 # ------------------------------------------------------------------------------
 # Third exploratory plot
 
-# --> Filip: Here the plot that explains the trimming and the new bins.
+bin_colours <- c(
+  "1" = "#440154", "2" = "#482878", "3" = "#3E4989",
+  "4" = "#31688E", "5" = "#26828E", "6" = "#1F9E89",
+  "7" = "#35B779", "8" = "#52C569", "9" = "#86D549",
+  "10" = "#C2DF23"
+)
 
+
+
+bin_info <- school_data |>
+  summarise(
+    .by = weging_bin,
+    lo = min(schoolweging), hi = max(schoolweging), n_schools = n()
+  ) |>
+  mutate(
+    x = as.integer(weging_bin),
+    txt = if_else(x <= 6, "white", "black"),
+    range = paste(round(lo, 1), round(hi, 1), sep = "-")
+  )
+
+# >>> CHANGE LINE AND OUTSIDE-POINT COLOURS HERE <<<
+bin_line_colour <- "grey45"
+trim_line_colour <- "red"
+outside_point_colour <- "grey75"
+
+# Preserve the full dataset BEFORE trimming
+bin_labels <- setNames(
+  paste0(
+    "Bin ", bin_info$weging_bin,
+    " (n=", bin_info$n_schools, ")"
+  ),
+  as.character(bin_info$weging_bin)
+)
+
+# Place boundaries halfway between adjacent ntile() bins
+bin_boundaries <- school_data |>
+  group_by(weging_bin) |>
+  summarise(
+    bin_min = min(schoolweging),
+    bin_max = max(schoolweging),
+    .groups = "drop"
+  ) |>
+  arrange(weging_bin) |>
+  mutate(cutoff = (bin_max + lead(bin_min)) / 2) |>
+  filter(!is.na(cutoff))
+
+plot_spread_and_weight2 <- ggplot(
+  school_data_full,
+  aes(x = schoolweging, y = spreiding)
+) +
+  # Full dataset in grey
+  geom_point(
+    colour = outside_point_colour,
+    alpha = 0.5,
+    size = 0.5
+  ) +
+  # Only schools within the trimming limits get bin colours
+  geom_point(
+    data = school_data,
+    aes(colour = weging_bin),
+    alpha = 0.5,
+    size = 0.5
+  ) +
+  # Boundaries between ntile() bins
+  geom_vline(
+    data = bin_boundaries,
+    aes(xintercept = cutoff),
+    colour = bin_line_colour,
+    linetype = "dotted",
+    linewidth = 0.4
+  ) +
+  # 10th- and 90th-percentile limits
+  geom_vline(
+    xintercept = limits,
+    colour = trim_line_colour,
+    linetype = "dashed",
+    linewidth = 0.6
+  ) +
+  scale_colour_manual(
+    values = bin_colours,
+    labels= bin_labels,
+    name = "Schoolweging bin",
+    drop = FALSE
+  ) +
+  guides(
+    colour = guide_legend(
+      title.position = "top",
+      title.hjust = 0.5,
+      ncol = 5,              # Fewer entries per row prevent crowding
+      byrow = TRUE,
+      override.aes = list(
+        size = 2,            # Make legend dots easier to see
+        alpha = 1
+      )
+    )
+  ) +
+  labs(
+    title = "Average socio-economic disadvantage (Schoolweging) vs. 
+      Within-school socioeconomic heterogeneity (Spreiding)",
+    subtitle = "",
+    x = "Schoolweging",
+    y = "Spreiding"
+  ) +
+  theme_minimal() +
+  # Put custom settings AFTER theme_minimal()
+  theme(
+    plot.title = element_text(
+      face = "bold",
+      size = 12,
+      hjust = 0.5),
+    
+    legend.position = "top",
+    legend.title = element_text(size = 8, face = "italic"),
+    legend.text = element_text(size = 7),
+    legend.key.width = grid::unit(0.2, "cm"),
+    legend.key.height = grid::unit(0.2, "cm")
+  )
+
+print(plot_spread_and_weight2)
+```
+
+
+```{r regressions, echo=FALSE,}
 # ------------------------------------------------------------------------------
 # Regressions
 
