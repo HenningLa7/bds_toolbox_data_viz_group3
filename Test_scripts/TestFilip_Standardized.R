@@ -106,6 +106,59 @@ scores_by_school <- scores_by_provider |>
     standardized_score = weighted.mean(score_z, tested_pupils),
     .groups = "drop"
   )
+###advice performance variablenhennign schooldata
+keep_single <- function(df) {
+  df |>
+    add_count(INSTELLINGSCODE, name = "n_locations") |>
+    filter(n_locations == 1L) |>
+    select(-n_locations)
+}
+
+# "00AP|C1" -> "00AP"
+school_context <- schoolweging |>
+  transmute(
+    INSTELLINGSCODE = str_remove(OVT, "\\|.*$"),
+    schoolweging,
+    spreiding,
+    n_students_school = aantal_leerlingen
+  ) |>
+  keep_single()
+
+# "<5" -> 2.5; share of advices that are HAVO or higher
+school_advice <- schooladviezen |>
+  select(INSTELLINGSCODE, all_of(advice_cols)) |>
+  mutate(
+    across(all_of(advice_cols), ~ as.numeric(str_replace(.x, "^<5$", "2.5"))),
+    n_students_advice = rowSums(pick(all_of(advice_cols))),
+    HAVO_higher = 100 * rowSums(pick(all_of(havo_cols))) / n_students_advice
+  ) |>
+  select(INSTELLINGSCODE, HAVO_higher, n_students_advice) |>
+  keep_single()
+
+advice_cols <- c(
+  "VSO", "PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT",
+  "VMBO_GT", "VMBO_GT_HAVO", "HAVO", "HAVO_VWO", "VWO"
+)
+havo_cols <- c("HAVO", "HAVO_VWO", "VWO")
+
+school_advice <- schooladviezen |>
+  select(INSTELLINGSCODE, all_of(advice_cols)) |>
+  mutate(
+    across(all_of(advice_cols), ~ as.numeric(str_replace(.x, "^<5$", "2.5"))),
+    n_students_advice = rowSums(pick(all_of(advice_cols))),
+    HAVO_higher = 100 * rowSums(pick(all_of(havo_cols))) / n_students_advice
+  ) |>
+  select(INSTELLINGSCODE, HAVO_higher, n_students_advice) |>
+  keep_single()
+# One row per school
+school_data <- school_context |>
+  inner_join(school_advice, by = "INSTELLINGSCODE", 
+             relationship = "one-to-one") |>
+  filter(
+    !is.na(schoolweging), !is.na(spreiding),
+    !is.na(HAVO_higher), n_students_advice > 0
+  )
+
 
 plot_data <- scores_by_school |>
   inner_join(weging_by_school, by = "INSTELLINGSCODE") |>
@@ -137,32 +190,125 @@ plot_data <- plot_data |>
       )
     )
   )
-
-message("Matched schools: ", nrow(plot_data), ".")
-message(
-  "Schoolweging tertile cutpoints: ",
-  round(tertile_cutpoints[[1]], 1),
-  " and ",
-  round(tertile_cutpoints[[2]], 1),
-  "."
+###################
+bin_colours <- c(
+  "1" = "#440154", "2" = "#482878", "3" = "#3E4989",
+  "4" = "#31688E", "5" = "#26828E", "6" = "#1F9E89",
+  "7" = "#35B779", "8" = "#52C569", "9" = "#86D549",
+  "10" = "#C2DF23"
 )
+school_data_full <- school_data
 
+limits <- quantile(school_data$schoolweging, c(1 / 10, 9 / 10))
+
+school_data <- school_data |>
+  filter(between(schoolweging, limits[[1]], limits[[2]])) |>
+  mutate(
+    weging_trimmed = schoolweging,
+    weging_bin = factor(ntile(weging_trimmed, 10), ordered = TRUE),
+    weging_trim_c = weging_trimmed - mean(weging_trimmed),
+    spreiding_c = spreiding - mean(spreiding)
+  )
+
+plot_spread_and_weight <- ggplot(
+  school_data,
+  aes(x = schoolweging, y = spreiding)
+) +
+  geom_point(alpha = 0.5, size = .5) +
+  labs(
+    title = "Schoolweging and spreiding",
+    subtitle = "Each point represents one school",
+    x = "Schoolweging",
+    y = "Spreiding"
+  )
+plot_spread_and_weight
 theme_set(theme_minimal(base_size = 12))
 
-# Aggregate nearby values so color represents the median standardized score.
-heatmap_data <- plot_data |>
+# Use your existing bin_colours vector
+
+# >>> CHANGE LINE AND OUTSIDE-POINT COLOURS HERE <<<
+bin_line_colour <- "grey45"
+trim_line_colour <- "red"
+outside_point_colour <- "grey75"
+
+# Preserve the full dataset BEFORE trimming
+school_data_full <- school_data
+
+limits <- quantile(
+  school_data_full$schoolweging,
+  probs = c(0.1, 0.9),
+  na.rm = TRUE
+)
+
+# Keep your original ntile() bins and variables for later analyses
+school_data <- school_data_full |>
+  filter(between(schoolweging, limits[[1]], limits[[2]])) |>
   mutate(
-    weight_bin = cut_interval(schoolweging, n = 12),
-    spread_bin = cut_interval(spreiding, n = 12)
-  ) |>
-  group_by(weight_bin, spread_bin) |>
+    weging_trimmed = schoolweging,
+    weging_bin = factor(ntile(weging_trimmed, 10), ordered = TRUE),
+    weging_trim_c = weging_trimmed - mean(weging_trimmed),
+    spreiding_c = spreiding - mean(spreiding)
+  )
+
+# Place boundaries halfway between adjacent ntile() bins
+bin_boundaries <- school_data |>
+  group_by(weging_bin) |>
   summarise(
-    median_score_z = median(standardized_score),
-    schools = n(),
+    bin_min = min(schoolweging),
+    bin_max = max(schoolweging),
     .groups = "drop"
   ) |>
-  filter(schools >= 5)
+  arrange(weging_bin) |>
+  mutate(cutoff = (bin_max + lead(bin_min)) / 2) |>
+  filter(!is.na(cutoff))
 
+plot_spread_and_weight2 <- ggplot(
+  school_data_full,
+  aes(x = schoolweging, y = spreiding)
+) +
+  # Full dataset in grey
+  geom_point(
+    colour = outside_point_colour,
+    alpha = 0.5,
+    size = 0.5
+  ) +
+  # Only schools within the trimming limits get bin colours
+  geom_point(
+    data = school_data,
+    aes(colour = weging_bin),
+    alpha = 0.5,
+    size = 0.5
+  ) +
+  # Boundaries between ntile() bins
+  geom_vline(
+    data = bin_boundaries,
+    aes(xintercept = cutoff),
+    colour = bin_line_colour,
+    linetype = "dotted",
+    linewidth = 0.4
+  ) +
+  # 10th- and 90th-percentile limits
+  geom_vline(
+    xintercept = limits,
+    colour = trim_line_colour,
+    linetype = "dashed",
+    linewidth = 0.6
+  ) +
+  scale_colour_manual(
+    values = bin_colours,
+    name = "Schoolweging bin",
+    drop = FALSE
+  ) +
+  labs(
+    title = "Schoolweging and spreiding",
+    subtitle = "Schools outside the trimming limits are shown in grey",
+    x = "Schoolweging",
+    y = "Spreiding"
+  ) +
+  theme_minimal()
+
+plot_spread_and_weight2
+##############################
 near_30_data <- plot_data |>
   filter(between(schoolweging, 28, 32))
 
@@ -201,9 +347,22 @@ plot_near_30 <- ggplot(
     y = "Standardized test score (provider-specific z-score)"
   )
 
- 
+ ######
+near_35_data <- plot_data |>
+  filter(between(schoolweging, 30, 40))
 
-
+plot_near_35 <- ggplot(
+  near_35_data,
+  aes(x = spreiding, y = standardized_score)
+) +
+  geom_point(alpha = 0.35, size = 1.3) +
+  geom_smooth(method = "loess", se = FALSE, color = "steelblue") +
+  labs(
+    title = "Spreiding and relative scores near schoolweging 35",
+    subtitle = "Schools with schoolweging from 30 to 40",
+    x = "Spreiding",
+    y = "Standardized test score (provider-specific z-score)"
+  )
 
 
 
@@ -239,6 +398,27 @@ model_spreiding<-lm(
 summary(model_spreiding)
 summary(model_interaction)
 
+plot_data <- plot_data |>
+  mutate(
+    schoolweging_c = schoolweging - mean(schoolweging, na.rm = TRUE)
+  )
+
+
+model_adjusted <- lm(
+  standardized_score ~ spreiding_c + schoolweging_c,
+  data = plot_data
+)
+
+summary(model_adjusted)
+
+
+  model_inverted <- lm(
+    spreiding_c ~ standardized_score + schoolweging_c,
+    data = plot_data
+  )
+  
+
+summary(model_inverted)
 # Does allowing different slopes improve the model?
 anova(model_no_interaction, model_interaction)
 
@@ -344,3 +524,219 @@ results_tertile <- do.call(
 )
 
 results_tertile
+
+
+
+model_continuous_no_interaction <- lm(
+  standardized_score ~ spreiding_c + schoolweging_c,
+  data = plot_data
+)
+summary(model_continuous_interaction)
+model_continuous_interaction <- lm(
+  standardized_score ~ spreiding_c * schoolweging_c,
+  data = plot_data
+)
+
+anova(
+  model_continuous_no_interaction,
+  model_continuous_interaction
+)
+
+summary(model_continuous_no_interaction)
+
+library(ggplot2)
+
+# Obtain representative schoolweging values
+schoolweging_values <- quantile(
+  plot_data$schoolweging_c,
+  probs = c(0.20, 0.50, 0.80),
+  na.rm = TRUE
+)
+
+# Create values at which predictions will be made
+prediction_data <- expand.grid(
+  spreiding_c = seq(
+    quantile(plot_data$spreiding_c, 0.02, na.rm = TRUE),
+    quantile(plot_data$spreiding_c, 0.98, na.rm = TRUE),
+    length.out = 100
+  ),
+  schoolweging_c = schoolweging_values
+)
+
+prediction_data$schoolweging_level <- factor(
+  prediction_data$schoolweging_c,
+  levels = schoolweging_values,
+  labels = c(
+    "Lower schoolweging (20th percentile)",
+    "Typical schoolweging (50th percentile)",
+    "Higher schoolweging (80th percentile)"
+  )
+)
+
+# Predicted scores and confidence intervals
+predictions <- predict(
+  model_continuous_interaction,
+  newdata = prediction_data,
+  interval = "confidence"
+)
+
+prediction_data <- cbind(prediction_data, predictions)
+
+# Plot conditional predicted relationships
+ggplot(
+  prediction_data,
+  aes(
+    x = spreiding_c,
+    y = fit,
+    colour = schoolweging_level,
+    fill = schoolweging_level
+  )
+) +
+  geom_ribbon(
+    aes(ymin = lwr, ymax = upr),
+    alpha = 0.15,
+    colour = NA
+  ) +
+  geom_line(linewidth = 1) +
+  labs(
+    x = "Within-school disadvantage spread (centred)",
+    y = "Predicted standardized performance",
+    colour = "Schoolweging",
+    fill = "Schoolweging"
+  ) +
+  theme_minimal()
+
+
+
+
+
+
+# ------------------------------------------------------------------------------
+# Third exploratory plot
+#
+
+#How is within-school socioeconomic heterogeneity 
+#associated with the proportion of students receiving HAVO-or-higher recommendations 
+#in schools with moderate average socioeconomic disadvantage?
+
+bin_info <- school_data |>
+  summarise(
+    .by = weging_bin,
+    lo = min(schoolweging), hi = max(schoolweging), n_schools = n()
+  ) |>
+  mutate(
+    x = as.integer(weging_bin),
+    txt = if_else(x <= 6, "white", "black"),
+    range = paste(round(lo, 1), round(hi, 1), sep = "-")
+  )
+
+# >>> CHANGE LINE AND OUTSIDE-POINT COLOURS HERE <<<
+bin_line_colour <- "grey45"
+trim_line_colour <- "red"
+outside_point_colour <- "grey75"
+
+# Preserve the full dataset BEFORE trimming
+school_data_full <- school_data
+
+limits <- quantile(
+  school_data_full$schoolweging,
+  probs = c(0.1, 0.9),
+  na.rm = TRUE
+)
+bin_labels <- setNames(
+  paste0(
+    "Bin ", bin_info$weging_bin,
+    " (n=", bin_info$n_schools, ")"
+  ),
+  as.character(bin_info$weging_bin)
+)
+# Keep your original ntile() bins and variables for later analyses
+school_data <- school_data_full |>
+  filter(between(schoolweging, limits[[1]], limits[[2]])) |>
+  mutate(
+    weging_trimmed = schoolweging,
+    weging_bin = factor(ntile(weging_trimmed, 10), ordered = TRUE),
+    weging_trim_c = weging_trimmed - mean(weging_trimmed),
+    spreiding_c = spreiding - mean(spreiding)
+  )
+
+# Place boundaries halfway between adjacent ntile() bins
+bin_boundaries <- school_data |>
+  group_by(weging_bin) |>
+  summarise(
+    bin_min = min(schoolweging),
+    bin_max = max(schoolweging),
+    .groups = "drop"
+  ) |>
+  arrange(weging_bin) |>
+  mutate(cutoff = (bin_max + lead(bin_min)) / 2) |>
+  filter(!is.na(cutoff))
+
+plot_spread_and_weight2 <- ggplot(
+  school_data_full,
+  aes(x = schoolweging, y = spreiding)
+) +
+  # Full dataset in grey
+  geom_point(
+    colour = outside_point_colour,
+    alpha = 0.5,
+    size = 0.5
+  ) +
+  # Only schools within the trimming limits get bin colours
+  geom_point(
+    data = school_data,
+    aes(colour = weging_bin),
+    alpha = 0.5,
+    size = 0.5
+  ) +
+  # Boundaries between ntile() bins
+  geom_vline(
+    data = bin_boundaries,
+    aes(xintercept = cutoff),
+    colour = bin_line_colour,
+    linetype = "dotted",
+    linewidth = 0.4
+  ) +
+  # 10th- and 90th-percentile limits
+  geom_vline(
+    xintercept = limits,
+    colour = trim_line_colour,
+    linetype = "dashed",
+    linewidth = 0.6
+  ) +
+  scale_colour_manual(
+    values = bin_colours,
+    labels= bin_labels,
+    name = "Schoolweging bin",
+    drop = FALSE
+  ) +
+  guides(
+    colour = guide_legend(
+      title.position = "top",
+      title.hjust = 0.5,
+      ncol = 3,              # Fewer entries per row prevent crowding
+      byrow = TRUE,
+      override.aes = list(
+        size = 3,            # Make legend dots easier to see
+        alpha = 1
+      )
+    )
+  ) +
+  labs(
+    title = "Average socio-economic disadvantage (Schoolweging) vs. 
+      Within-school socioeconomic heterogeneity (Spreiding)",
+    subtitle = "",
+    x = "Schoolweging",
+    y = "Spreiding"
+  ) +
+  theme_minimal() +
+  # Put custom settings AFTER theme_minimal()
+  theme(
+    legend.position = "top",
+    legend.title = element_text(size = 8, face = "plain"),
+    legend.text = element_text(size = 9),
+    legend.key.width = grid::unit(0.4, "cm"),
+    legend.key.height = grid::unit(0.4, "cm")
+  )
+
+plot_spread_and_weight2
