@@ -216,20 +216,37 @@ par(old_par)
 # --> Non-normality at the tails can be seen. 
 
 # ------------------------------------------------------------------------------
-# Final visualization plot bottom left:
+# Final visualization - shared settings
 
 # Reusable bin colours (1 = least, 10 = most disadvantaged); edit freely
 bin_colours <- c(
-  "1" = "#440154", "2" = "#482878", "3" = "#3E4989",
-  "4" = "#31688E", "5" = "#26828E", "6" = "#1F9E89",
-  "7" = "#35B779", "8" = "#52C569", "9" = "#86D549",
-  "10" = "#C2DF23"
+  "1"  = "#071440",  # deep navy
+  "2"  = "#10286E",  # dark royal blue
+  "3"  = "#1A459F",  # royal blue
+  "4"  = "#2563C4",  # strong blue
+  "5"  = "#3F86DB",  # sky blue 
+  "6"  = "#4A9C8A",  # muted teal
+  "7"  = "#5BA777",  # muted green
+  "8"  = "#78B067",  # soft green
+  "9"  = "#9BB95E",  # olive green
+  "10" = "#BCC45C"   # muted yellow-green
 )
 
 # Labels for the axis
 het <- "Socio-economic heterogeneity"
-adv <- "HAVO or higher advice"
+adv <- "HAVO+ advice"
 dis <- "Average socio-economic disadvantage"
+
+# Shared legend style, so that all legends have the same text and key size
+legend_theme <- theme(
+  legend.position = "bottom",
+  legend.title = element_text(size = 8.5),
+  legend.text = element_text(size = 8.5),
+  legend.key.height = unit(0.5, "cm")
+)
+
+# ------------------------------------------------------------------------------
+# Final visualization plot - bottom left
 
 # Bin-specific slopes: conventional vs HC3 robust 95% CIs
 slope_data <- marginaleffects::avg_slopes(
@@ -285,11 +302,15 @@ p_left <- ggplot(school_data, aes(x = spreiding, y = HAVO_higher)) +
   scale_colour_manual(values = bin_colours, guide = "none") +
   scale_fill_manual(values = bin_colours, guide = "none") +
   scale_size_continuous(
-    name = "Students per school", range = c(0.3, 3.5)
+    name = "Students per school: Models unweighted; point size for illustration",
+    range = c(0.3, 2.5)
   ) +
   scale_linetype_manual(name = NULL, values = "dashed") +
   guides(
-    size = guide_legend(override.aes = list(alpha = 0.7)),
+    size = guide_legend(
+      override.aes = list(alpha = 0.7),
+      theme = theme(legend.title.position = "left")
+    ),
     linetype = guide_legend(
       theme = theme(legend.key.width = unit(1.2, "cm"))
     )
@@ -305,22 +326,21 @@ p_left <- ggplot(school_data, aes(x = spreiding, y = HAVO_higher)) +
     x = het, y = adv
   ) +
   theme_minimal() +
+  legend_theme +
   theme(
-    legend.position = "bottom",
     panel.grid.minor = element_blank(),
     plot.title = element_text(face = "bold"),
     strip.text = element_text(face = "bold")
   )
 
 # ------------------------------------------------------------------------------
-# Final visualization plot bottom right:
+# Final visualization plot - bottom right
 
 # Data for the dashed zero line, so that it gets its own legend entry
 zero_line <- data.frame(
   yintercept = 0,
   explanation = "If CI includes zero = slope not significant"
 )
-
 
 # Create the bottom right plot:
 p_right <- ggplot(
@@ -360,28 +380,29 @@ p_right <- ggplot(
       "Slope estimated separately within each disadvantage bin;",
       "95% CI"
     ),
-    x = paste(dis, "(bin)"),
+    x = paste(dis, "(Bin)"),
     y = paste0("Change in ", adv, " per unit of ", tolower(het))
   ) +
   theme_minimal() +
+  legend_theme +
   theme(
-    legend.position = "bottom",
     panel.grid.minor = element_blank(),
     plot.title = element_text(face = "bold")
   )
 
 # ------------------------------------------------------------------------------
-# Final visualization plot title and subtitle at the top:
+# Final visualization - plot title and subtitle at the top:
 
 # Define title and subtitle:
-final_title <- "Does socio-economic heterogeneity within schools relate to HAVO or higher advice?"
+final_title <- "Mixed schools, higher advice: the pattern holds mainly where disadvantage is low"
 final_subtitle <- paste(
-  "Research question",
-  "Research question?"
+  "Is within-school heterogeneity in students' socioeconomic disadvantage related ",
+  "to the share of students receiving a HAVO-or-higher secondary-school advice, ",
+  "controlling for the school's average level of student socioeconomic disadvantage?"
 )
 
 # ------------------------------------------------------------------------------
-# Final visualization legend bins
+# Final visualization - legend bins
 
 # Bin summary: range of average disadvantage and number of schools per bin
 bin_info <- school_data |>
