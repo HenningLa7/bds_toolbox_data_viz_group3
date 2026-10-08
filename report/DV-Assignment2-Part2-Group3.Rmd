@@ -1,6 +1,6 @@
 ---
-title: "DV Assignment 2: [Your Title Here]"
-author: "Group X: Firstname Lastname, Firstname Lastname, Firstname Lastname"
+title: "DV Assignment 2: Effects of schools' socio-economic heterogeneity"
+author: "Group 3: Filip Hlavinka, Henning Lang"
 date: "`r Sys.Date()`"
 output:
   html_document:
@@ -25,16 +25,19 @@ source(here::here("scripts", "00-packages.R"))
 source(here::here("scripts", "01-get-data.R"))
 ```
 
-# **Research question and target audience**
+## **Research question and target audience**
 
-*RQ:How is within-school socioeconomic heterogeneity associated with the proportion of students receiving HAVO-or-higher advice, with control for  average socioeconomic disadvantage.* <br>
-*Audience: Educational researchers interested in how socioeconomic heterogeneity within schools relates to student performance, with attention to the limitations of school-level data and causal interpretation.*
+*RQ: How is within-school heterogeneity in socio-economic disadvantage associated with the proportion of students receiving final HAVO-or-higher advice, accounting for the school population’s average socio-economic disadvantage?* <br>
 
-# **Exploratory process**
+*Audience: Educational researchers interested in how socio-economic heterogeneity within schools relates to student performance, with attention to the limitations of causal interpretation and school-level data.*
 
-## Initial Data Preparation
+## **Exploratory process**
 
-```{r variable-prep, echo=FALSE}
+### **Initial Data Preparation**
+
+We combined the schoolweging (OVT column) and schooladviezen (INSTELLINGSCODE column) datasets using the school ID. The codebook did not explain how to match schools with several locations, so we excluded them. We replaced "<5" student counts with 2.5, as suggested in the codebook, and then created the HAVO+ variable, the share of final recommendations that are HAVO, HAVO/VWO or VWO (see explanation below).
+
+```{r variable-prep, echo=FALSE, message=FALSE, warning=FALSE}
 # Save school form variables
 advice_cols <- c(
   "VSO", "PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT",
@@ -81,13 +84,10 @@ school_data <- school_context |>
     !is.na(HAVO_higher), n_students_advice > 0
   )
 
-head(school_data) |>
-  flextable::flextable() |>
-  flextable::theme_booktabs() |>
-  flextable::autofit()
+head(school_data)
 ```
 
-In the joined dataset the following variables are particularly important:
+In the joined dataset the following variables are particularly important for our visualization:
 
 | Variable name in data | Original dataset | Variable name in plots | Explanation | Predictor/Outcome |
 |---|---|---|-------------|
@@ -95,7 +95,7 @@ In the joined dataset the following variables are particularly important:
 | `schoolweging` | `schoolweging` | Avg. socio-economic disadvantage | Measure of the mean school population’s socio-economic disadvantage; higher values indicate greater disadvantage. | **Predictor** |
 | `HAVO_higher` | Derived from `schooladviezen` | HAVO+ advice | Percentage of recorded final recommendations that are HAVO, HAVO/VWO, or VWO | **Outcome** |
 
-## First plot on Havo+ advice
+### **First plot on Havo+ advice**
 
 ```{r first-plot, echo=FALSE, fig.width = 12, fig.height = 6, fig.align = "center"}
 # ------------------------------------------------------------------------------
@@ -162,7 +162,7 @@ ggplot(advice_share, aes(x = advice, y = share, fill = havo_plus)) +
 
 We placed the cut between VMBO-GT/HAVO and HAVO to obtain two roughly similar-sized groups of recommendations. This also follows the codebook’s track ordering: HAVO, HAVO/VWO, and VWO represent the higher academic recommendations, and we calculate their combined share within each school.
 
-## Second plot on bivariate relationships
+### **Second plot on bivariate relationships**
 
 ```{r second-plot, echo=FALSE}
 # ------------------------------------------------------------------------------
@@ -229,10 +229,7 @@ school_data <- school_data |>
     spreiding_c = spreiding - mean(spreiding)
   )
 
-head(school_data) |>
-  flextable::flextable() |>
-  flextable::theme_booktabs() |>
-  flextable::autofit()
+head(school_data)
 ```
 
 <u>Description</u>
@@ -367,7 +364,7 @@ plot_spread_and_weight2 <- ggplot(
 plot_spread_and_weight2
 ```
 
-# **Statistical MOdelling**
+## **Statistical MOdelling**
 
 ```{r regressions, echo=FALSE,}
 # ------------------------------------------------------------------------------
@@ -386,18 +383,18 @@ summary(model_2)
 old_par <- par(mfrow = c(2, 2))
 plot(model_1, which = c(1, 2, 3, 5), ask = FALSE)
 par(old_par)
-old_par <- par(mfrow = c(2, 2))
-plot(model_2, which = c(1, 2, 3, 5), ask = FALSE)
-par(old_par)
+# old_par <- par(mfrow = c(2, 2))
+# plot(model_2, which = c(1, 2, 3, 5), ask = FALSE)
+# par(old_par)
 # --> Similar pattern for both models, so model 1 is chosen.
 # --> Non-normality at the tails can be seen. 
 ```
 
-# **Final visualization**
+## **Final visualization**
 
 *Your final, explanatory visualization goes below. Include a short write-up: what does it communicate, why is this the best way to communicate it, and how robust is the finding?*
 
-```{r final-plot, fig.width = 14, fig.height = 7.5, dpi = 200, out.width = "100%", fig.align = "center", fig.alt = "Slopes of socio-economic heterogeneity on HAVO+ advice per disadvantage bin", echo = FALSE, warning = FALSE, message = FALSE}
+```{r final-plot, fig.width = 14, fig.height = 8.5, dpi = 200, out.width = "100%", fig.align = "center", fig.alt = "Slopes of socio-economic heterogeneity on HAVO+ advice per disadvantage bin", echo = FALSE, warning = FALSE, message = FALSE}
 # ------------------------------------------------------------------------------
 # Final visualization - shared settings
 
@@ -409,9 +406,10 @@ dis <- "Avg. socio-economic disadvantage"
 # Shared legend style, so that all legends have the same text and key size
 legend_theme <- theme(
   legend.position = "bottom",
-  legend.title = element_text(size = 8),
-  legend.text = element_text(size = 8),
-  legend.key.height = unit(0.5, "cm")
+  legend.title = element_text(size = 7.5),
+  legend.text = element_text(size = 7.5),
+  legend.key.height = unit(0.5, "cm"),
+  legend.box.spacing = unit(4, "pt")
 )
 
 # ------------------------------------------------------------------------------
@@ -470,7 +468,10 @@ p_left <- ggplot(school_data, aes(x = spreiding, y = HAVO_higher)) +
   scale_colour_manual(values = bin_colours, guide = "none") +
   scale_fill_manual(values = bin_colours, guide = "none") +
   scale_size_continuous(
-    name = "Students per school: Models unweighted; point size for illustration",
+    name = paste(
+      "Students per school:",
+      "Models unweighted; point size for illustration"
+    ),
     range = c(0.3, 2.5)
   ) +
   scale_linetype_manual(name = NULL, values = "dashed") +
@@ -498,6 +499,9 @@ p_left <- ggplot(school_data, aes(x = spreiding, y = HAVO_higher)) +
   theme(
     panel.grid.minor = element_blank(),
     plot.title = element_text(face = "bold"),
+    plot.title.position = "plot",
+    plot.margin = margin(0, 5.5, 5.5, 5.5),
+    axis.title = element_text(size = 10),
     strip.text = element_text(face = "bold")
   )
 
@@ -555,7 +559,10 @@ p_right <- ggplot(
   legend_theme +
   theme(
     panel.grid.minor = element_blank(),
-    plot.title = element_text(face = "bold")
+    plot.title = element_text(face = "bold"),
+    plot.title.position = "plot",
+    plot.margin = margin(0, 5.5, 5.5, 5.5),
+    axis.title = element_text(size = 10)
   )
 
 # ------------------------------------------------------------------------------
@@ -563,31 +570,36 @@ p_right <- ggplot(
 
 # Define title and subtitle:
 final_title <- paste(
-  "Mixed schools, higher advice:",
-  "the pattern holds mainly where disadvantage is low"
+  "More mixed school populations, higher advice:",
+  "the association is clearest where disadvantage is lower"
 )
 final_subtitle <- paste(
-  "Is within-school heterogeneity in students' socioeconomic disadvantage",
-  "related to the share of students receiving a HAVO-or-higher",
-  "secondary-school advice,\ncontrolling for the school's average level of",
-  "student socioeconomic disadvantage?"
+  "How is within-school heterogeneity in socio-economic disadvantage",
+  "associated with the proportion of students receiving final",
+  "HAVO-or-higher advice, accounting for the school population’s",
+  "average socio-economic disadvantage?"
 )
 
 # ------------------------------------------------------------------------------
-# Final visualization legend bins 
+# Final visualization legend bins
 
 # Height of the legend panel in cm (fixed; used in plot_layout() below)
-top_cm <- 2.4
+top_cm <- 2.7
+# Distance in cm between the legend box and the plots below
+gap_cm <- 0.1
 # Approximate cm per y-unit of the panel (y runs from -1 to 1)
 cm_per_y <- (top_cm - 0.15) / 2
 
 # Strip geometry (x: 0-100 across the panel; y: -1 to 1)
-strip_x0 <- 44
-tile_w <- 5.4
-tile_h <- 0.8
-tile_yc <- 0.02
-y_top <- 0.82
-y_bottom <- -0.74
+strip_x0 <- 44.5
+tile_w <- 5.2
+tile_h <- 0.76
+tile_yc <- 0.13
+y_head <- 0.66
+y_top <- 0.78
+y_bottom <- -0.78
+# "Bin X" size equals the facet strip titles in the left plot (8.8 pt)
+bin_font <- 8.8 / ggplot2::.pt
 
 # Bin summary: range of average disadvantage and number of schools per bin
 bin_info <- school_data |>
@@ -602,33 +614,43 @@ bin_info <- school_data |>
     range = paste(round(lo, 1), round(hi, 1), sep = "-")
   )
 
-# One note row below the strip: tile ranges, schools per bin, trimming
+# Two note rows below the strip: bin ranges, schools per bin, trimming
 strip_note <- paste0(
-  "Tile numbers = range of average disadvantage. ",
+  "Numbers within bins show the range of avg. socio-economic disadvantage. ",
   paste(unique(range(bin_info$n_schools)), collapse = "-"),
-  " schools per bin. ",
-  "(Lowest and highest 10% of schools excluded, because ...)"
+  " schools per bin.\n",
+  "Schools in the lowest and highest disadvantage deciles excluded ",
+  "due to lower within-school socio-economic heterogeneity."
 )
 
 # Explanation box: bold term (left column) + short sentence (right column)
-box_font <- 2.6
+box_font <- 3
 box_items <- data.frame(
   term = c(
     "HAVO+ advice:",
-    "Avg. Socio-economic disadvantage:",
-    "Socio-economic heterogeneity:"
+    "Avg. socio-economic\ndisadvantage:",
+    "Socio-economic\nheterogeneity:"
   ),
   text = c(
-    "Share of pupils with a final advice of HAVO, HAVO/VWO or VWO.",
-    "School average (CBS); higher = more disadvantaged. Forms the bins.",
-    "Differences between pupils within a school; higher = more mixed."
+    "Share of final recommendations that are HAVO, HAVO/VWO or VWO.",
+    paste(
+      "Average socio-economic disadvantage of the school population;",
+      "higher = more disadvantaged. Defines the bins."
+    ),
+    paste(
+      "Differences in socio-economic disadvantage among pupils",
+      "within a school; higher = more heterogeneous."
+    )
   )
 )
-box_items$text <- stringr::str_wrap(box_items$text, width = 70)
+box_items$text <- stringr::str_wrap(box_items$text, width = 60)
 
 # Spread the items evenly over the same height as the right-hand strip
 line_h <- box_font * ggplot2::.pt * 1.2 * 0.95 / 72 * 2.54 / cm_per_y
-box_items$n_lines <- stringr::str_count(box_items$text, "\n") + 1
+box_items$n_lines <- pmax(
+  stringr::str_count(box_items$text, "\n"),
+  stringr::str_count(box_items$term, "\n")
+) + 1
 text_h <- sum(box_items$n_lines) * line_h
 item_gap <- max((y_top - y_bottom - text_h) / (nrow(box_items) - 1), 0.04)
 box_items$y <- y_top -
@@ -638,19 +660,19 @@ box_items$y <- y_top -
 p_legend <- ggplot(bin_info) +
   annotate(
     "rect",
-    xmin = 0.4, xmax = 99.6, ymin = -0.94, ymax = 0.94,
+    xmin = 1.5, xmax = 98.5, ymin = -0.94, ymax = 0.94,
     fill = "grey97", colour = "grey30", linewidth = 0.3
   ) +
   # explanation text
   geom_text(
     data = box_items,
-    aes(x = 2, y = y, label = term),
+    aes(x = 3.5, y = y, label = term),
     hjust = 0, vjust = 1, fontface = "bold", size = box_font,
-    colour = "grey15"
+    lineheight = 0.95, colour = "grey15"
   ) +
   geom_text(
     data = box_items,
-    aes(x = 17, y = y, label = text),
+    aes(x = 14.5, y = y, label = text),
     hjust = 0, vjust = 1, size = box_font, lineheight = 0.95,
     colour = "grey15"
   ) +
@@ -660,32 +682,43 @@ p_legend <- ggplot(bin_info) +
     width = tile_w * 0.94, height = tile_h
   ) +
   geom_text(
-    aes(x = tile_x, y = tile_yc + 0.17, label = paste("Bin", x), colour = txt),
-    fontface = "bold", size = 3.2
+    aes(
+      x = tile_x, y = tile_yc + 0.15,
+      label = paste("Bin", x), colour = txt
+    ),
+    fontface = "bold", size = bin_font
   ) +
   geom_text(
-    aes(x = tile_x, y = tile_yc - 0.17, label = range, colour = txt),
-    size = 2.9
+    aes(x = tile_x, y = tile_yc - 0.15, label = range, colour = txt),
+    size = 2.6
   ) +
   annotate(
-    "text", x = strip_x0 + 5 * tile_w, y = 0.66, fontface = "bold",
+    "text", x = strip_x0 + 5 * tile_w, y = y_head, fontface = "bold",
     size = 3.3, colour = "grey15",
-    label = "10 equal-sized bins of average socio-economic disadvantage"
+    label = "10 equal-sized bins of avg. socio-economic disadvantage"
   ) +
   annotate(
-    "text", x = strip_x0, y = 0.66, hjust = 0, fontface = "italic",
-    size = 3.1, colour = "grey15",
-    label = "\u2190 Less disadvantaged"
+    "text", x = strip_x0, y = y_head, hjust = 0,
+    size = 3.1, colour = "grey15", label = "\u2190"
   ) +
   annotate(
-    "text", x = strip_x0 + 10 * tile_w, y = 0.66, hjust = 1,
-    fontface = "italic", size = 3.1, colour = "grey15",
-    label = "More disadvantaged \u2192"
+    "text", x = strip_x0 + 2.2, y = y_head, hjust = 0,
+    fontface = "italic", size = box_font, colour = "grey15",
+    label = "Less disadvantaged"
   ) +
-  # one note row: tile ranges, schools per bin, trimming
   annotate(
-    "text", x = strip_x0 + 5 * tile_w, y = -0.62, size = 2.7,
-    colour = "grey30", label = strip_note
+    "text", x = strip_x0 + 10 * tile_w, y = y_head, hjust = 1,
+    size = 3.1, colour = "grey15", label = "\u2192"
+  ) +
+  annotate(
+    "text", x = strip_x0 + 10 * tile_w - 2.2, y = y_head, hjust = 1,
+    fontface = "italic", size = box_font, colour = "grey15",
+    label = "More disadvantaged"
+  ) +
+  # two note rows: bin ranges, schools per bin, trimming
+  annotate(
+    "text", x = strip_x0 + 5 * tile_w, y = -0.58, size = 2.7,
+    lineheight = 0.95, colour = "grey30", label = strip_note
   ) +
   scale_fill_manual(values = bin_colours) +
   scale_colour_identity() +
@@ -693,30 +726,33 @@ p_legend <- ggplot(bin_info) +
   theme_void() +
   theme(
     legend.position = "none",
-    plot.margin = margin(2, 2, 2, 2)
+    plot.margin = margin(2, 0, 2, 0)
   )
 
 # ------------------------------------------------------------------------------
 # Final plot
 
 # Bottom row: scatterplot (left), slope plot (right)
-bottom_row <- (p_left | p_right) + plot_layout(widths = c(3, 2))
+bottom_row <- (p_left | p_right) + plot_layout(widths = c(2.7, 2.3))
 
-# Create final plot:
-final_plot <- p_legend / bottom_row +
-  plot_layout(heights = unit(c(top_cm, 1), c("cm", "null"))) +
+# Create final plot: the legend box is centred, a spacer sets the distance
+# between the box and the plots
+final_plot <- wrap_elements(full = p_legend) / plot_spacer() / bottom_row +
+  plot_layout(heights = unit(c(top_cm, gap_cm, 1), c("cm", "cm", "null"))) +
   plot_annotation(
     title = final_title,
     subtitle = final_subtitle,
     theme = theme(
       plot.title = element_text(face = "bold", size = 18),
-      plot.subtitle = element_text(colour = "grey30", size = 10)
+      plot.subtitle = element_text(
+        colour = "grey30", size = 9.2, margin = margin(b = 13)
+      )
     )
   )
 final_plot
 ```
 
-## Conclusion
+## **Conclusion**
 
 *What can you conclude from your visualization? What are the limitations of this analysis?*
 
