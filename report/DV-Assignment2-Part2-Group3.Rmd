@@ -343,8 +343,8 @@ plot_spread_and_weight2 <- ggplot(
     title = "Average socio-economic disadvantage (Schoolweging) vs. 
       Within-school socioeconomic heterogeneity (Spreiding)",
     subtitle = "",
-    x = "Schoolweging",
-    y = "Spreiding"
+    x = "Avg. socio-economic disadvantage",
+    y = "Socio-economic heterogeneity"
   ) +
   theme_minimal() +
   # Put custom settings AFTER theme_minimal()
@@ -353,6 +353,10 @@ plot_spread_and_weight2 <- ggplot(
       face = "bold",
       size = 12,
       hjust = 0.5),
+    plot.title.position = "plot",
+    plot.margin = margin(0, 5.5, 5.5, 5.5),
+    axis.title = element_text(size = 10),
+    strip.text = element_text(face = "bold"),
     
     legend.position = "top",
     legend.title = element_text(size = 8, face = "italic"),
@@ -363,6 +367,9 @@ plot_spread_and_weight2 <- ggplot(
 
 plot_spread_and_weight2
 ```
+
+<u>Description</u>
+We look at simple scatter plot of Avg. socio-economic disadvantage and socioeconomic heterogenity within a school. Cutoff points of 10% on each side of the graph were made (red lines) and the schools were excluded. This was done because we wanted to compare schools in roughly the same avg. socio-economic disadvantage and unofortunately at both ends schools with roughly same avg. socio-economic disadvantage and differing heterogenity levelswere not so abundant..Additionally this was also done to also focus more on middle av. distadvantaged schools 25-35. Furthermore, this range was split into 10 bins with the same size of schools ~445. We then use these bins to see how heterogenity is associated with havo+ advice across different bins.
 
 ## **Statistical MOdelling**
 
@@ -765,6 +772,11 @@ ggsave(
 
 *What can you conclude from your visualization? What are the limitations of this analysis?*
 
+##**Use of AI**
+
+<u>Description of AI use</u>
+Filip: I have used AI mainly for exploratory part of the assignment. So to check how the data looks, what might be point of interests etc. I have used copilot for those plots. Since it did not provide the best looking plot at first manual changes were then made to change to plot appropriatly of how we wanted it to look. Also used to look up arguments and if I wanted specific changes in a plot.
+<br>
 ---
 
 **Before submitting:** run the lintr check on this file, and re-knit from a clean environment (`rm(list = ls())`, already done above) to make sure everything reproduces from scratch.
