@@ -369,7 +369,7 @@ plot_spread_and_weight2
 ```
 
 <u>Description</u>
-We look at simple scatter plot of Avg. socio-economic disadvantage and socioeconomic heterogenity within a school. Cutoff points of 10% on each side of the graph were made (red lines) and the schools were excluded. This was done because we wanted to compare schools in roughly the same avg. socio-economic disadvantage and unofortunately at both ends schools with roughly same avg. socio-economic disadvantage and differing heterogenity levelswere not so abundant..Additionally this was also done to also focus more on middle av. distadvantaged schools 25-35. Furthermore, this range was split into 10 bins with the same size of schools ~445. We then use these bins to see how heterogenity is associated with havo+ advice across different bins.
+We look at simple scatter plot of Avg. socio-economic disadvantage and socioeconomic heterogenity within a school. Cutoff points of 10% on each side of the graph were made (red lines) and the schools were excluded. This was done because we wanted to compare schools in roughly the same avg. socio-economic disadvantage and unfortunately at both ends schools with similar avg. socio-economic disadvantage and differing heterogenity levels are not so abundant. Additionally this was done to focus more on middle range of avg. disadvantaged schools 25-35. Furthermore, this range was split into 10 bins with the same size of schools ~445. We then use these bins to see how heterogenity is associated with havo+ advice across different bins.
 
 ## **Statistical MOdelling**
 
@@ -769,14 +769,17 @@ ggsave(
 ```
 
 ## **Conclusion**
+<u></u>
+Conclusion: 
+Within the middle range of average socio-economic disadvantage that we examine, greater within-school heterogeneity is associated with a higher proportion of students receiving final HAVO-or-higher advice, mainly among relatively less disadvantaged schools (bins 1–5). In these bins, a one-unit increase in heterogeneity is associated with approximately 3.5–2.5 (bins 1-5 respectively) percentage points more HAVO+ advice. The association is non existent or generally weaker in more disadvantaged schools, although it remains positive in bin 10. These findings suggest that the relationship between socio-economic heterogeneity and educational advice varies with schools average disadvantage. Important to mention that this is definitely not evidence for a causal effect.
+<br>
+Limitations: While our analysis identifies a relationship, the estimated  effect sizes and the difference between  bins are not, on their own, sufficient  to support policy recommendations. Furthermore, school-level heterogeneity may also obscure classroom-level effect, where mechanisms such as peer interactions and teaching practices are likely to have a  more direct effect. These mechanisms are complex and may depend on how students are grouped and supported; a heterogeneous school population does not necessarily imply heterogeneous classrooms. Our findings therefore do not establish that increasing heterogeneity would improve outcomes. Nevertheless, our findings are consistent with existing body of knowledge socio-economic diversity can be beneficial to student performancce under certain conditions.
 
-*What can you conclude from your visualization? What are the limitations of this analysis?*
-
-##**Use of AI**
 
 <u>Description of AI use</u>
 Filip: I have used AI mainly for exploratory part of the assignment. So to check how the data looks, what might be point of interests etc. I have used copilot for those plots. Since it did not provide the best looking plot at first manual changes were then made to change to plot appropriatly of how we wanted it to look. Also used to look up arguments and if I wanted specific changes in a plot.
 <br>
+Henning:
 ---
 
 **Before submitting:** run the lintr check on this file, and re-knit from a clean environment (`rm(list = ls())`, already done above) to make sure everything reproduces from scratch.
