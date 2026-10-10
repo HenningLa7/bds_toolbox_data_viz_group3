@@ -13,7 +13,10 @@ output:
 rm(list = ls())
 
 # Packages:
-packages <- c("marginaleffects", "patchwork", "flextable")
+packages <- c("marginaleffects", "patchwork", "kableExtra")
+# --> marginaleffects for bin-specific regression slopes and CIs
+# --> patchwork for combination of ggplots
+# --> kableExtra for beautiful markdown tables
 for (i in packages) {
   if (!require(i, character.only = TRUE)) install.packages(i)
   library(i, character.only = TRUE)
@@ -25,17 +28,31 @@ source(here::here("scripts", "00-packages.R"))
 source(here::here("scripts", "01-get-data.R"))
 ```
 
-## **Research question and target audience**
+## **Research question and audience**
 
-*RQ: How is within-school heterogeneity in socio-economic disadvantage associated with the proportion of students receiving final HAVO-or-higher advice, accounting for the school population’s average socio-economic disadvantage?* <br>
+<u>Research question</u>
 
-*Audience: Educational researchers interested in how socio-economic heterogeneity within schools relates to student performance, with attention to the limitations of causal interpretation and school-level data.*
+We examine whether schools with more socio-economically heterogeneous populations differ in their share of HAVO-or-higher recommendations, comparing schools with similar average levels of disadvantage. Using public dutch school-level data for 2024/2025, we investigate associations rather than causal effects. Our research question is:
+
+> **How is within-school heterogeneity in socio-economic disadvantage associated with the proportion of students receiving final HAVO-or-higher advice, accounting for the school population’s average socio-economic disadvantage?**
+
+Note: Socio-economic disadvantage was measured ...
+
+<u>Level of visualization</u>
+
+Our chosen level of visualization is **inference**. 
+
+<u>Target audience</u>
+
+Our visualization is intended as a **research poster for educational researchers** interested in how socio-economic differences among pupils and schools relate to final secondary-school recommendations. It assumes basic familiarity with linear regression, interaction terms, and confidence intervals, allowing readers to compare associations across schools with different levels of average disadvantage. Policymakers with a research background and an interest in school composition may also find it relevant, provided they recognize the limits of school-level data and non-causal findings.
 
 ## **Exploratory process**
 
 ### **Initial Data Preparation**
 
 We combined the schoolweging (OVT column) and schooladviezen (INSTELLINGSCODE column) datasets using the school ID. The codebook did not explain how to match schools with several locations, so we excluded them. We replaced "<5" student counts with 2.5, as suggested in the codebook, and then created the HAVO+ variable, the share of final recommendations that are HAVO, HAVO/VWO or VWO (see explanation below).
+
+After this initial preparation, the data looked like this:
 
 ```{r variable-prep, echo=FALSE, message=FALSE, warning=FALSE}
 # Save school form variables
@@ -84,7 +101,8 @@ school_data <- school_context |>
     !is.na(HAVO_higher), n_students_advice > 0
   )
 
-head(school_data)
+kable(head(school_data)) |>
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = TRUE)
 ```
 
 In the joined dataset the following variables are particularly important for our visualization:
@@ -97,9 +115,11 @@ In the joined dataset the following variables are particularly important for our
 
 ### **First plot on Havo+ advice**
 
-```{r first-plot, echo=FALSE, fig.width = 12, fig.height = 6, fig.align = "center"}
+With this plot we want to explain how we created the outome HAVO+ advice:
+
+```{r first-plot, echo=FALSE, fig.align="center", fig.height=6, fig.width=12, message=FALSE, warning=FALSE}
 # ------------------------------------------------------------------------------
-# First Exploratory plot
+# First plot
 
 # Prepare the data for the first exploratory plot:
 advice_share <- schooladviezen |>
@@ -124,9 +144,7 @@ ggplot(advice_share, aes(x = advice, y = share, fill = havo_plus)) +
     aes(label = sprintf("%.1f%%", share)),
     vjust = -0.4, fontface = "bold"
   ) +
-  # cut between VMBO-GT-HAVO (8th bar) and HAVO (9th bar)
   geom_vline(xintercept = 8.5, linetype = "dashed", colour = "grey30") +
-  # arrow and label above the three HAVO-or-higher bars
   annotate(
     "segment",
     x = 8.6, xend = 11.4, y = 24, yend = 24,
@@ -164,9 +182,11 @@ We placed the cut between VMBO-GT/HAVO and HAVO to obtain two roughly similar-si
 
 ### **Second plot on bivariate relationships**
 
-```{r second-plot, echo=FALSE}
+In this exploratory plot we look at the bivariate relations:
+
+```{r second-plot, echo=FALSE, message=FALSE, warning=FALSE, fig.align="center", fig.height=6, fig.width=12}
 # ------------------------------------------------------------------------------
-# Second exploratory plot
+# Second plot
 
 # Scatterplot: points sized by number of students per school
 scatter <- function(x, y, x_lab, y_lab) {
@@ -179,8 +199,8 @@ scatter <- function(x, y, x_lab, y_lab) {
 
 # Titles and labs
 het <- "Socio-economic heterogeneity"
-dis <- "Average socio-economic disadvantage"
-adv <- "HAVO or higher advice (%)"
+dis <- "Avg. socio-economic disadvantage"
+adv <- "HAVO+ advice (%)"
 
 # Create second plot with patchwork
 (scatter(spreiding, HAVO_higher, het, adv) +
@@ -189,7 +209,8 @@ adv <- "HAVO or higher advice (%)"
   plot_layout(guides = "collect") +
   plot_annotation(
     title = "Exploring relationships between socio-economic school context and HAVO advice",
-    subtitle = "Two-variable relationships; each dot is one school"
+    subtitle = "Two-variable relationships; each dot is one school",
+    theme = theme_minimal()
   ) &
   theme_minimal() &
   theme(legend.position = "bottom")
@@ -199,26 +220,43 @@ adv <- "HAVO or higher advice (%)"
 
 The relationship between socio-economic heterogeneity and HAVO+ advice is not overt, whereas avg. socio-economic disadvantage appears to have a negative linear relationship with HAVO+ advice. Avg. Disadvantage and heterogeneity appear to follow an inverted-U-shaped.
 
-```{r second-prep, echo=FALSE}
+### **Subsequent Data Preparation**
+
+Because of the quadratic relation between avg. disadvantage and heterogeneity we looked at the mean heterogeneity within the deciles of avg. disadvantage:
+
+```{r avg_da_deciles, echo=FALSE, message=FALSE, warning=FALSE}
 # ------------------------------------------------------------------------------
-# Subsequent data preparation
+# Deciles of avg. disadvantage and mean heterogeneity 
 
 # Investigatiion of schoolweging based on the mean of spreiding:
-school_data |>
+deciles <- school_data |>
   mutate(decile = ntile(schoolweging, 10)) |>
   summarise(
     .by = decile,
-    min_weging = mean(schoolweging),
-    mean_spreiding = mean(spreiding), n = n()
-  ) |>
+    mean_weging = mean(schoolweging),
+    mean_spreiding = mean(spreiding),
+    n = n()
+  ) |> 
   arrange(decile)
+
+kable(deciles, digits = 2) |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = TRUE)
+```
+
+As can be seen is the mean heterogeneity for the lowest and highest avg. disadvantage deciles substantially lower than for the other deciles. Therefore we excluded the lowest and highest deciles. Also, for the interaction models we centred the continuous avg. diadvantge variable and the heterogeneity variable. 
+
+After this second data preparation the data looked like this: 
+
+```{r second-prep, echo=FALSE, message=FALSE, warning=FALSE}
+# ------------------------------------------------------------------------------
+# Subsequent data preparation
 
 # Keep all schools for the plot that explains the trimming
 school_data_full <- school_data
 
 # Trimming of schoolweging (cutting the lowest and highest 10%),
 # and categorize the rest of schoolweging into 10 bins with same sample size.
-# Centered the continuous varables for the subsequent interaction models.
+# Centred the continuous variables for the subsequent interaction models.
 limits <- quantile(school_data$schoolweging, c(1 / 10, 9 / 10))
 school_data <- school_data |>
   filter(between(schoolweging, limits[[1]], limits[[2]])) |>
@@ -229,17 +267,22 @@ school_data <- school_data |>
     spreiding_c = spreiding - mean(spreiding)
   )
 
-head(school_data)
+kable(head(school_data |> 
+             select(INSTELLINGSCODE, n_students_school, 
+                    HAVO_higher, weging_trim_c,
+                    weging_bin, spreiding_c))) |>
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = TRUE)
 ```
 
-<u>Description</u>
+### **Third plot on trimmed and grouped avg. disadvantage**
 
-...
+We explain how we trimmed and grouped the avg. disadvantage in this plot:
 
-```{r third-plot, echo=FALSE}
+```{r third-plot, echo=FALSE, fig.width=12, fig.height=6, fig.align="center"}
 # ------------------------------------------------------------------------------
-# Third exploratory plot
+# Third plot
 
+# Define colours for all subsequent plots
 bin_colours <- c(
   "1"  = "#071440",  # deep navy
   "2"  = "#10286E",  # dark royal blue
@@ -253,6 +296,7 @@ bin_colours <- c(
   "10" = "#BCC45C"   # muted yellow-green
 )
 
+# Define boundary info
 bin_info <- school_data |>
   summarise(
     .by = weging_bin,
@@ -264,11 +308,12 @@ bin_info <- school_data |>
     range = paste(round(lo, 1), round(hi, 1), sep = "-")
   )
 
+# Define boundary colours
 bin_line_colour      <- "grey45"
 trim_line_colour     <- "red"
 outside_point_colour <- "grey75"
 
-# Preserve the full dataset BEFORE trimming
+# Preserve full dataset
 bin_labels <- setNames(
   paste0(
     "Bin ", bin_info$weging_bin,
@@ -277,7 +322,7 @@ bin_labels <- setNames(
   as.character(bin_info$weging_bin)
 )
 
-# Place boundaries halfway between adjacent ntile() bins
+# Boundaries halfway between adjacent ntile() bins
 bin_boundaries <- school_data |>
   group_by(weging_bin) |>
   summarise(
@@ -289,24 +334,22 @@ bin_boundaries <- school_data |>
   mutate(cutoff = (bin_max + lead(bin_min)) / 2) |>
   filter(!is.na(cutoff))
 
-plot_spread_and_weight2 <- ggplot(
+# Plotting
+ggplot(
   school_data_full,
   aes(x = schoolweging, y = spreiding)
 ) +
-  # Full dataset in grey
   geom_point(
     colour = outside_point_colour,
     alpha = 0.5,
     size = 0.5
   ) +
-  # Only schools within the trimming limits get bin colours
   geom_point(
     data = school_data,
     aes(colour = weging_bin),
     alpha = 0.5,
     size = 0.5
   ) +
-  # Boundaries between ntile() bins
   geom_vline(
     data = bin_boundaries,
     aes(xintercept = cutoff),
@@ -314,7 +357,6 @@ plot_spread_and_weight2 <- ggplot(
     linetype = "dotted",
     linewidth = 0.4
   ) +
-  # 10th- and 90th-percentile limits
   geom_vline(
     xintercept = limits,
     colour = trim_line_colour,
@@ -331,51 +373,44 @@ plot_spread_and_weight2 <- ggplot(
     colour = guide_legend(
       title.position = "top",
       title.hjust = 0.5,
-      ncol = 5,              # Fewer entries per row prevent crowding
+      ncol = 5,              
       byrow = TRUE,
       override.aes = list(
-        size = 2,            # Make legend dots easier to see
+        size = 2,            
         alpha = 1
       )
     )
   ) +
   labs(
-    title = "Average socio-economic disadvantage (Schoolweging) vs. 
-      Within-school socioeconomic heterogeneity (Spreiding)",
-    subtitle = "",
+    title = paste(
+      "Average socio-economic disadvantage vs. within-school ",
+      "socio-economic heterogeneity: explanation trimming and grouping"
+    ),
     x = "Avg. socio-economic disadvantage",
     y = "Socio-economic heterogeneity"
   ) +
   theme_minimal() +
-  # Put custom settings AFTER theme_minimal()
   theme(
-    plot.title = element_text(
-      face = "bold",
-      size = 12,
-      hjust = 0.5),
-    plot.title.position = "plot",
-    plot.margin = margin(0, 5.5, 5.5, 5.5),
     axis.title = element_text(size = 10),
     strip.text = element_text(face = "bold"),
-    
+
     legend.position = "top",
     legend.title = element_text(size = 8, face = "italic"),
     legend.text = element_text(size = 7),
     legend.key.width = grid::unit(0.2, "cm"),
     legend.key.height = grid::unit(0.2, "cm")
   )
-
-plot_spread_and_weight2
 ```
 
 <u>Description</u>
-We look at simple scatter plot of Avg. socio-economic disadvantage and socioeconomic heterogenity within a school. Cutoff points of 10% on each side of the graph were made (red lines) and the schools were excluded. This was done because we wanted to compare schools in roughly the same avg. socio-economic disadvantage and unfortunately at both ends schools with similar avg. socio-economic disadvantage and differing heterogenity levels are not so abundant. Additionally this was done to focus more on middle range of avg. disadvantaged schools 25-35. Furthermore, this range was split into 10 bins with the same size of schools ~445. We then use these bins to see how heterogenity is associated with havo+ advice across different bins.
 
-## **Statistical MOdelling**
+We look at a simple scatter plot of average socio-economic disadvantage and socio-economic heterogeneity within a school. Cutoff points were set at 10% on each side of the graph (red lines), and schools outside these cutoffs were excluded. This was done because we wanted to compare schools with roughly the same average socio-economic disadvantage, but with different within-school heterogeneity; outside the cutoffs, there were too few comparable schools spanning both low and high levels of heterogeneity. Furthermore, this range was split into 10 bins containing approximately the same number of schools (~ n = 445). We will use these bins to see how heterogeneity is associated with HAVO+ advice across different bins.
 
-```{r regressions, echo=FALSE,}
+## **Statistical Modelling**
+
+```{r regression_models, include=FALSE, message=FALSE, warning=FALSE}
 # ------------------------------------------------------------------------------
-# Regressions
+# Regression models
 
 # Model 1
 model_1 <- lm(
@@ -385,23 +420,36 @@ summary(model_1)
 # Model 2
 model_2 <- lm(HAVO_higher ~ spreiding_c * weging_trim_c, data = school_data)
 summary(model_2)
+```
 
-# Check regression assumptions for models
+The output of the statistical models can be seen in the rmd-file.
+
+<u>Description</u>
+
+Model 1 is a linear regression with the percentage of HAVO+ advice as the outcome and centered within-school heterogeneity, average disadvantage grouped into ten bins (a factor), and their interaction as predictors. We used these bin-specific slopes and fitted values for the visualizations; the mode's adjusted R² was 0.181, meaning it explained approximately 18% of the variation in HAVO+ advice. Model 2, which used continuous rather than grouped average disadvantage, produced similar results, suggesting that grouping did not substantially reduce the variance explained.
+
+<u>Model diagnostics</u>
+
+In a subsequent step we checked the diagnostics of our model using residual plots.
+
+```{r regression_assumptions, fig.width=11, fig.height=7, echo=FALSE, message=FALSE, warning=FALSE}
+# ------------------------------------------------------------------------------
+# Regression assumptions
+
+# Check regression assumptions for both models with appropriate plots
 old_par <- par(mfrow = c(2, 2))
 plot(model_1, which = c(1, 2, 3, 5), ask = FALSE)
 par(old_par)
 # old_par <- par(mfrow = c(2, 2))
 # plot(model_2, which = c(1, 2, 3, 5), ask = FALSE)
 # par(old_par)
-# --> Similar pattern for both models, so model 1 is chosen.
-# --> Non-normality at the tails can be seen. 
 ```
 
-## **Final visualization**
+The plots show no clear pattern in the residuals, a fairly stable spread, and no observations that appear strongly influential, although a few schools have higher leverage. The Q–Q plot shows some (likely non-severe) deviations from normality at the tails.
 
-*Your final, explanatory visualization goes below. Include a short write-up: what does it communicate, why is this the best way to communicate it, and how robust is the finding?*
+## **Final visualization and conclusion**
 
-```{r final-plot, fig.width = 14, fig.height = 8.5, dpi = 200, out.width = "100%", fig.align = "center", fig.alt = "Slopes of socio-economic heterogeneity on HAVO+ advice per disadvantage bin", echo = FALSE, warning = FALSE, message = FALSE}
+```{r final-plot, fig.width=14, fig.height=9.8, dpi=200, out.width="100%", fig.align="center", echo=FALSE, warning=FALSE, message=FALSE}
 # ------------------------------------------------------------------------------
 # Final visualization - shared settings
 
@@ -422,7 +470,7 @@ legend_theme <- theme(
 # ------------------------------------------------------------------------------
 # Final visualization plot - bottom left
 
-# Bin-specific slopes with conventional 95% CIs
+# Bin-specific slopes (of the centered heterogeneity, model 1) with 95% CIs
 slope_data <- marginaleffects::avg_slopes(
   model_1, variables = "spreiding_c", by = "weging_bin"
 )
@@ -444,15 +492,15 @@ bin_means <- school_data |>
 # Legend text for the dashed lines (used in both bottom plots)
 zero_label <- "No relationship (zero slope)"
 
-# Create the bottom left plot:
-p_left <- ggplot(school_data, aes(x = spreiding, y = HAVO_higher)) +
-  geom_point(
-    aes(size = n_students_school),
-    alpha = 0.15, colour = "grey35"
-  ) +
-  geom_hline(
+# Create the bottom left plot (x-axis: centered heterogeneity from model 1):
+p_left <- ggplot(school_data, aes(x = spreiding_c, y = HAVO_higher)) +
+  geom_segment(
     data = bin_means,
-    aes(yintercept = mean_advice, linetype = zero_label),
+    aes(
+      x = -2.6, xend = 2.6,
+      y = mean_advice, yend = mean_advice,
+      linetype = zero_label
+    ),
     colour = "grey30", linewidth = 0.5
   ) +
   geom_ribbon(
@@ -474,19 +522,8 @@ p_left <- ggplot(school_data, aes(x = spreiding, y = HAVO_higher)) +
   ) +
   scale_colour_manual(values = bin_colours, guide = "none") +
   scale_fill_manual(values = bin_colours, guide = "none") +
-  scale_size_continuous(
-    name = paste(
-      "Students per school:",
-      "Models unweighted; point size for illustration"
-    ),
-    range = c(0.3, 2.5)
-  ) +
   scale_linetype_manual(name = NULL, values = "dashed") +
   guides(
-    size = guide_legend(
-      override.aes = list(alpha = 0.7),
-      theme = theme(legend.title.position = "left")
-    ),
     linetype = guide_legend(
       theme = theme(legend.key.width = unit(1.2, "cm"))
     )
@@ -497,9 +534,8 @@ p_left <- ggplot(school_data, aes(x = spreiding, y = HAVO_higher)) +
   ) +
   coord_cartesian(ylim = c(0, 100)) +
   labs(
-    title = "What the data look like",
-    subtitle = "Each dot is one school; line = linear fit with 95% CI",
-    x = het, y = adv
+    title = "Fitted HAVO+ advice by socio-economic heterogeneity",
+    x = paste(het, "(centered)"), y = adv
   ) +
   theme_minimal() +
   legend_theme +
@@ -521,6 +557,20 @@ zero_line <- data.frame(
   explanation = "If CI includes zero = slope not significant"
 )
 
+# Vertical extent of the highlight box: all CIs of bins 1-5 plus a small margin
+box_data <- slope_data |>
+  filter(as.integer(weging_bin) <= 5) |>
+  summarise(ymin = min(conf.low) - 0.25, ymax = max(conf.high) + 0.25)
+
+# Explanatory text for the highlight box
+box_text <- paste(
+  "Significant slopes within",
+  "bins 1-5: higher heterogeneity",
+  "is associated with more",
+  "students advised to HAVO+",
+  sep = "\n"
+)
+
 # Create the bottom right plot:
 p_right <- ggplot(
   slope_data,
@@ -531,6 +581,12 @@ p_right <- ggplot(
     aes(yintercept = yintercept, linetype = explanation),
     colour = "grey50", inherit.aes = FALSE
   ) +
+  geom_rect(
+    data = box_data,
+    aes(xmin = 0.55, xmax = 5.88, ymin = ymin, ymax = ymax),
+    fill = NA, colour = "lightskyblue", linewidth = 0.6,
+    inherit.aes = FALSE
+  ) +
   geom_pointrange(
     aes(ymin = conf.low, ymax = conf.high),
     linewidth = 0.8, size = 0.6
@@ -538,7 +594,16 @@ p_right <- ggplot(
   geom_text(
     aes(label = sprintf("%+.1f pp", estimate)),
     colour = "black", fontface = "bold",
-    hjust = 0, nudge_x = 0.15, size = 2.7
+    hjust = 0, nudge_x = 0.1, size = 2.5
+  ) +
+  annotate(
+    "text", x = 6.3, y = 5.2, label = box_text, hjust = 0, vjust = 1,
+    fontface = "bold", size = 3.8, lineheight = 0.95, colour = "black"
+  ) +
+  annotate(
+    "curve", x = 7, y = 3.95, xend = 5.98, yend = 3.3,
+    curvature = -0.3, linewidth = 0.5, colour = "black",
+    arrow = arrow(length = unit(0.2, "cm"), type = "closed")
   ) +
   scale_x_discrete(expand = expansion(add = c(0.6, 1.2))) +
   scale_colour_manual(values = bin_colours, guide = "none") +
@@ -554,11 +619,7 @@ p_right <- ggplot(
   ) +
   coord_cartesian(ylim = c(-2, 6)) +
   labs(
-    title = "Slopes of socio-economic heterogeneity on advice",
-    subtitle = paste(
-      "Slope estimated separately within each disadvantage bin;",
-      "95% CI"
-    ),
+    title = "Slopes with confidence intervals of heterogeneity on advice",
     x = paste(dis, "(Bin)"),
     y = paste0("Change in ", adv, " per unit of ", tolower(het))
   ) +
@@ -577,8 +638,8 @@ p_right <- ggplot(
 
 # Define title and subtitle:
 final_title <- paste(
-  "More mixed school populations, higher advice:",
-  "the association is clearest where disadvantage is lower"
+  "More socio-economically mixed schools give more HAVO+ advice,",
+  "especially when disadvantage is lower"
 )
 final_subtitle <- paste(
   "How is within-school heterogeneity in socio-economic disadvantage",
@@ -587,10 +648,26 @@ final_subtitle <- paste(
   "average socio-economic disadvantage?"
 )
 
+# Footnote at the bottom: model description and data sources
+model_note <- paste0(
+  "Model: Unweighted linear regression model with interaction term; ",
+  "slopes are estimated separately within each avg. disadvantage bin; ",
+  "socio-economic heterogeneity was centered; ",
+  "95% confidence intervals, adj. R\u00b2 = .181 (p < .001)"
+)
+source_note <- paste0(
+  "Data sources: DUO (Dienst Uitvoering Onderwijs) open education data, ",
+  "schooladviezen 2024\u20132025 (duo.nl/open_onderwijsdata); ",
+  "Onderwijsinspectie (Dutch Education Inspectorate), schoolweging ",
+  "2024\u20132025, calculated by Statistics Netherlands" ,
+  "(onderwijsinspectie.nl)"
+)
+final_caption <- paste(model_note, source_note, sep = "\n")
+
 # ------------------------------------------------------------------------------
 # Final visualization legend bins
 
-# Height of the legend panel in cm (fixed; used in plot_layout() below)
+# Height of the legend panel in cm 
 top_cm <- 2.7
 # Distance in cm between the legend box and the plots below
 gap_cm <- 0.1
@@ -605,7 +682,8 @@ tile_yc <- 0.13
 y_head <- 0.66
 y_top <- 0.78
 y_bottom <- -0.78
-# "Bin X" size equals the facet strip titles in the left plot (8.8 pt)
+
+# "Bin X" size equals the facet strip titles in the left plot
 bin_font <- 8.8 / ggplot2::.pt
 
 # Bin summary: range of average disadvantage and number of schools per bin
@@ -617,7 +695,6 @@ bin_info <- school_data |>
   mutate(
     x = as.integer(weging_bin),
     tile_x = strip_x0 + (x - 0.5) * tile_w,
-    txt = if_else(x <= 6, "white", "black"),
     range = paste(round(lo, 1), round(hi, 1), sep = "-")
   )
 
@@ -683,21 +760,18 @@ p_legend <- ggplot(bin_info) +
     hjust = 0, vjust = 1, size = box_font, lineheight = 0.95,
     colour = "grey15"
   ) +
-  # compressed bin strip
+  # compressed bin strip (white text in all bins)
   geom_tile(
     aes(x = tile_x, y = tile_yc, fill = weging_bin),
     width = tile_w * 0.94, height = tile_h
   ) +
   geom_text(
-    aes(
-      x = tile_x, y = tile_yc + 0.15,
-      label = paste("Bin", x), colour = txt
-    ),
-    fontface = "bold", size = bin_font
+    aes(x = tile_x, y = tile_yc + 0.15, label = paste("Bin", x)),
+    colour = "white", fontface = "bold", size = bin_font
   ) +
   geom_text(
-    aes(x = tile_x, y = tile_yc - 0.15, label = range, colour = txt),
-    size = 2.6
+    aes(x = tile_x, y = tile_yc - 0.15, label = range),
+    colour = "white", size = 2.6
   ) +
   annotate(
     "text", x = strip_x0 + 5 * tile_w, y = y_head, fontface = "bold",
@@ -709,7 +783,7 @@ p_legend <- ggplot(bin_info) +
     size = 3.1, colour = "grey15", label = "\u2190"
   ) +
   annotate(
-    "text", x = strip_x0 + 2.2, y = y_head, hjust = 0,
+    "text", x = strip_x0 + 1.2, y = y_head, hjust = 0,
     fontface = "italic", size = box_font, colour = "grey15",
     label = "Less disadvantaged"
   ) +
@@ -718,17 +792,15 @@ p_legend <- ggplot(bin_info) +
     size = 3.1, colour = "grey15", label = "\u2192"
   ) +
   annotate(
-    "text", x = strip_x0 + 10 * tile_w - 2.2, y = y_head, hjust = 1,
+    "text", x = strip_x0 + 10 * tile_w - 1.2, y = y_head, hjust = 1,
     fontface = "italic", size = box_font, colour = "grey15",
     label = "More disadvantaged"
   ) +
-  # two note rows: bin ranges, schools per bin, trimming
   annotate(
     "text", x = strip_x0 + 5 * tile_w, y = -0.58, size = 2.7,
     lineheight = 0.95, colour = "grey30", label = strip_note
   ) +
   scale_fill_manual(values = bin_colours) +
-  scale_colour_identity() +
   coord_cartesian(xlim = c(0, 100), ylim = c(-1, 1), expand = FALSE) +
   theme_void() +
   theme(
@@ -740,46 +812,45 @@ p_legend <- ggplot(bin_info) +
 # Final plot
 
 # Bottom row: scatterplot (left), slope plot (right)
-bottom_row <- (p_left | p_right) + plot_layout(widths = c(2.7, 2.3))
+bottom_row <- wrap_elements(full = p_left) | wrap_elements(full = p_right)
 
-# Create final plot: the legend box is centred, a spacer sets the distance
-# between the box and the plots
+# Create final plot
 final_plot <- wrap_elements(full = p_legend) / plot_spacer() / bottom_row +
   plot_layout(heights = unit(c(top_cm, gap_cm, 1), c("cm", "cm", "null"))) +
   plot_annotation(
     title = final_title,
     subtitle = final_subtitle,
+    caption = final_caption,
     theme = theme(
       plot.title = element_text(face = "bold", size = 18),
       plot.subtitle = element_text(
         colour = "grey30", size = 9.2, margin = margin(b = 13)
+      ),
+      plot.caption = element_text(
+        colour = "grey40", size = 7.5, hjust = 0, lineheight = 1.1,
+        margin = margin(t = 1.5)   
       )
     )
   )
 final_plot
-
-ggsave(
-  "final_plot.pdf",
-  plot   = final_plot,
-  width  = 14,
-  height = 8.5,
-  units  = "in",
-  device = cairo_pdf
-)
 ```
 
-## **Conclusion**
-<u></u>
-Conclusion: 
-Within the middle range of average socio-economic disadvantage that we examine, greater within-school heterogeneity is associated with a higher proportion of students receiving final HAVO-or-higher advice, mainly among relatively less disadvantaged schools (bins 1–5). In these bins, a one-unit increase in heterogeneity is associated with approximately 3.5–2.5 (bins 1-5 respectively) percentage points more HAVO+ advice. The association is non existent or generally weaker in more disadvantaged schools, although it remains positive in bin 10. These findings suggest that the relationship between socio-economic heterogeneity and educational advice varies with schools average disadvantage. Important to mention that this is definitely not evidence for a causal effect.
-<br>
-Limitations: While our analysis identifies a relationship, the estimated  effect sizes and the difference between  bins are not, on their own, sufficient  to support policy recommendations. Furthermore, school-level heterogeneity may also obscure classroom-level effect, where mechanisms such as peer interactions and teaching practices are likely to have a  more direct effect. These mechanisms are complex and may depend on how students are grouped and supported; a heterogeneous school population does not necessarily imply heterogeneous classrooms. Our findings therefore do not establish that increasing heterogeneity would improve outcomes. Nevertheless, our findings are consistent with existing body of knowledge socio-economic diversity can be beneficial to student performancce under certain conditions.
+<u>Short description of the final visualization</u
+
+The final visualization groups schools into ten bins of average socio-economic disadvantage. The left panel shows how fitted HAVO+ advice shares vary with within-school heterogeneity, while the right panel shows the regression slope for each bin; both include 95% confidence intervals. Showing these plots together helps readers compare the relationships across bins and see both their size and uncertainty.
+
+<u>Conclusion</u>
+
+Within the middle range of average socio-economic disadvantage that we examine, greater within-school heterogeneity is associated with a higher proportion of students receiving final HAVO-or-higher advice, mainly among relatively less disadvantaged schools (bins 1–5). In these bins, a one-unit increase in heterogeneity is associated with approximately 2.5–3.5-percentage-point higher share of HAVO+ advice. The association is non-significant or generally weaker in more disadvantaged schools, although it remains positive in bin 10. These findings suggest that the relationship between socio-economic heterogeneity and educational advice varies with schools average disadvantage. 
+
+<u>Limitations on Interpretation</u>
+
+It is important to mention that this is not evidence for a causal effect. While our analysis identifies a relationship, the estimated effect sizes and the differences between bins are not, on their own, sufficient to support policy recommendations. The findings may also depend on the replacement of suppressed counts and the trimming and binning choices. Furthermore, school-level heterogeneity may also obscure classroom-level effects, where mechanisms such as peer interactions and teaching practices are likely to have a more direct effect. These mechanisms are complex and may depend on how students are grouped and supported; a heterogeneous school population does not necessarily imply heterogeneous classrooms. Nevertheless, our findings are compatible with the hypothesis that socio-economic diversity may benefit the further educational opportunities of both advantaged and disadvantaged students.
+
+## **Note on AI use**
+
+While working on this project, we utilized artificial intelligence at various stages, particularly when creating the final plot. Throughout the process, we always provided as clear instructions as possible regarding exactly how the visualization should look and how the code should be written, and we had the system generate only small sections step by step—one after another, so that we could review each one. Through iterative feedback processes, we repeatedly had the visualization adjusted or made manual changes ourselves. We realized how important our own understanding of the data and the codebook was for the quality of the output, especially for the correct data preparation. We also realized that it is crucial for us to provide very clear guidance and describe in great detail exactly what we want. Filip worked primarily with Copilot in the terminal, and Henning worked primarily with the latest Claude model in the UvA AI Chat. 
+
+**Number of word (without titles, AI note, plots): **
 
 
-<u>Description of AI use</u>
-Filip: I have used AI mainly for exploratory part of the assignment. So to check how the data looks, what might be point of interests etc. I have used copilot for those plots. Since it did not provide the best looking plot at first manual changes were then made to change to plot appropriatly of how we wanted it to look. Also used to look up arguments and if I wanted specific changes in a plot.
-<br>
-Henning:
----
-
-**Before submitting:** run the lintr check on this file, and re-knit from a clean environment (`rm(list = ls())`, already done above) to make sure everything reproduces from scratch.
