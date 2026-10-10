@@ -32,7 +32,7 @@ source(here::here("scripts", "01-get-data.R"))
 
 <u>Research question</u>
 
-We examine whether schools with more socio-economically heterogeneous populations differ in their share of HAVO-or-higher recommendations, comparing schools with similar average levels of disadvantage. Using public dutch school-level data for 2024/2025, we investigate associations rather than causal effects. Our research question is:
+We examine whether schools with more socio-economically heterogeneous populations differ in their share of HAVO-or-higher recommendations, comparing schools with similar average levels of disadvantage. We would like to explore this question without a directional hypothesis, using public dutch school-level data for 2024/2025. Given the data, we examine associations rather than causal effects. Our research question is:
 
 > **How is within-school heterogeneity in socio-economic disadvantage associated with the proportion of students receiving final HAVO-or-higher advice, accounting for the school population’s average socio-economic disadvantage?**
 
@@ -44,11 +44,11 @@ Our chosen level of visualization is **inference**.
 
 <u>Target audience</u>
 
-Our visualization is intended as a **research poster for educational researchers** interested in how socio-economic differences among pupils and schools relate to final secondary-school recommendations. It assumes basic familiarity with linear regression, interaction terms, and confidence intervals, allowing readers to compare associations across schools with different levels of average disadvantage. Policymakers with a research background and an interest in school composition may also find it relevant, provided they recognize the limits of school-level data and non-causal findings.
+Our visualization is intended as a **research poster for educational researchers** interested in how socio-economic differences among pupils and schools relate to final secondary-school recommendations. The graphic (in poster form) should, for example, be usable for presenting results at a scientific conference. The interpretation of the visualization requires basic statistical knowledge, e. g. familiarity with linear regression, interaction terms, and confidence intervals, allowing readers to compare associations across schools with different levels of average disadvantage. Policymakers with a research background and an interest in school composition may also find it relevant, provided they recognize the limits of school-level data and non-causal findings.
 
 ## **Exploratory process**
 
-### **Initial Data Preparation**
+### Initial Data Preparation
 
 We combined the schoolweging (OVT column) and schooladviezen (INSTELLINGSCODE column) datasets using the school ID. The codebook did not explain how to match schools with several locations, so we excluded them. We replaced "<5" student counts with 2.5, as suggested in the codebook, and then created the HAVO+ variable, the share of final recommendations that are HAVO, HAVO/VWO or VWO (see explanation below).
 
@@ -111,9 +111,9 @@ In the joined dataset the following variables are particularly important for our
 |---|---|---|-------------|
 | `spreiding` | `schoolweging` | Socio-economic Heterogeneity | Differences in socio-economic disadvantage among pupils within a school; higher values indicate greater heterogeneity. |  **Predictor** |
 | `schoolweging` | `schoolweging` | Avg. socio-economic disadvantage | Measure of the mean school population’s socio-economic disadvantage; higher values indicate greater disadvantage. | **Predictor** |
-| `HAVO_higher` | Derived from `schooladviezen` | HAVO+ advice | Percentage of recorded final recommendations that are HAVO, HAVO/VWO, or VWO | **Outcome** |
+| `HAVO_higher` | `schooladviezen` | HAVO+ advice | Percentage of recorded final recommendations that are HAVO, HAVO/VWO, or VWO | **Outcome** |
 
-### **First plot on Havo+ advice**
+### Plot 1 on Havo+ advice
 
 With this plot we want to explain how we created the outome HAVO+ advice:
 
@@ -180,7 +180,7 @@ ggplot(advice_share, aes(x = advice, y = share, fill = havo_plus)) +
 
 We placed the cut between VMBO-GT/HAVO and HAVO to obtain two roughly similar-sized groups of recommendations. This also follows the codebook’s track ordering: HAVO, HAVO/VWO, and VWO represent the higher academic recommendations, and we calculate their combined share within each school.
 
-### **Second plot on bivariate relationships**
+### Plot 2 on bivariate relationships
 
 In this exploratory plot we look at the bivariate relations:
 
@@ -220,7 +220,7 @@ adv <- "HAVO+ advice (%)"
 
 The relationship between socio-economic heterogeneity and HAVO+ advice is not overt, whereas avg. socio-economic disadvantage appears to have a negative linear relationship with HAVO+ advice. Avg. Disadvantage and heterogeneity appear to follow an inverted-U-shaped.
 
-### **Subsequent Data Preparation**
+### Subsequent Data Preparation
 
 Because of the quadratic relation between avg. disadvantage and heterogeneity we looked at the mean heterogeneity within the deciles of avg. disadvantage:
 
@@ -243,9 +243,9 @@ kable(deciles, digits = 2) |>
   kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = TRUE)
 ```
 
-As can be seen is the mean heterogeneity for the lowest and highest avg. disadvantage deciles substantially lower than for the other deciles. Therefore we excluded the lowest and highest deciles. Also, for the interaction models we centred the continuous avg. diadvantge variable and the heterogeneity variable. 
+It can be seen that the mean heterogeneity for the lowest and highest avg. disadvantage deciles is substantially lower than for the other deciles. Therefore we excluded the lowest and highest deciles. Also, for the interaction models we centred the continuous avg. disadvantage variable and the heterogeneity variable. 
 
-After this second data preparation the data looked like this: 
+After this second data preparation the data looked like this (here only the most important variables): 
 
 ```{r second-prep, echo=FALSE, message=FALSE, warning=FALSE}
 # ------------------------------------------------------------------------------
@@ -274,9 +274,9 @@ kable(head(school_data |>
   kable_styling(bootstrap_options = c("striped", "hover"), full_width = TRUE)
 ```
 
-### **Third plot on trimmed and grouped avg. disadvantage**
+### Plot 3 on trimmed avg. disadvantage
 
-We explain how we trimmed and grouped the avg. disadvantage in this plot:
+In this plot we want to explain how we trimmed and grouped the avg. disadvantage:
 
 ```{r third-plot, echo=FALSE, fig.width=12, fig.height=6, fig.align="center"}
 # ------------------------------------------------------------------------------
@@ -383,17 +383,18 @@ ggplot(
   ) +
   labs(
     title = paste(
-      "Average socio-economic disadvantage vs. within-school ",
-      "socio-economic heterogeneity: explanation trimming and grouping"
+      "Average socio-economic disadvantage vs. within-school",
+      "socio-economic heterogeneity: explanation of the trimming and grouping"
     ),
     x = "Avg. socio-economic disadvantage",
     y = "Socio-economic heterogeneity"
   ) +
   theme_minimal() +
   theme(
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
     axis.title = element_text(size = 10),
     strip.text = element_text(face = "bold"),
-
     legend.position = "top",
     legend.title = element_text(size = 8, face = "italic"),
     legend.text = element_text(size = 7),
@@ -404,7 +405,7 @@ ggplot(
 
 <u>Description</u>
 
-We look at a simple scatter plot of average socio-economic disadvantage and socio-economic heterogeneity within a school. Cutoff points were set at 10% on each side of the graph (red lines), and schools outside these cutoffs were excluded. This was done because we wanted to compare schools with roughly the same average socio-economic disadvantage, but with different within-school heterogeneity; outside the cutoffs, there were too few comparable schools spanning both low and high levels of heterogeneity. Furthermore, this range was split into 10 bins containing approximately the same number of schools (~ n = 445). We will use these bins to see how heterogeneity is associated with HAVO+ advice across different bins.
+We look at a simple scatter plot of average socio-economic disadvantage and socio-economic heterogeneity within a school. Cutoff points were set at 10% on each side of the graph (red lines), and schools outside these cutoffs were excluded. This was done because we wanted to compare schools with roughly the same average socio-economic disadvantage, but with different within-school heterogeneity; outside the cutoffs, there were too few comparable schools spanning both low and high levels of heterogeneity. Furthermore, this range was split into 10 bins containing approximately the same number of schools (~ n = 445). We will use these bins to see how heterogeneity is associated with HAVO+ advice across different levels of average disadvantage (= bins).
 
 ## **Statistical Modelling**
 
@@ -426,11 +427,11 @@ The output of the statistical models can be seen in the rmd-file.
 
 <u>Description</u>
 
-Model 1 is a linear regression with the percentage of HAVO+ advice as the outcome and centered within-school heterogeneity, average disadvantage grouped into ten bins (a factor), and their interaction as predictors. We used these bin-specific slopes and fitted values for the visualizations; the mode's adjusted R² was 0.181, meaning it explained approximately 18% of the variation in HAVO+ advice. Model 2, which used continuous rather than grouped average disadvantage, produced similar results, suggesting that grouping did not substantially reduce the variance explained.
+Model 1 is a linear regression with the percentage of HAVO+ advice as the outcome and centered within-school heterogeneity, average disadvantage grouped into ten bins (a factor), and their interaction as predictors. We used these bin-specific slopes and fitted values for the visualizations; the adjusted R² was 0.181, meaning it explained approximately 18% of the variation in HAVO+ advice. Model 2, which used continuous rather than grouped average disadvantage, produced similar results, suggesting that grouping did not substantially reduce the variance explained.
 
 <u>Model diagnostics</u>
 
-In a subsequent step we checked the diagnostics of our model using residual plots.
+In a subsequent step we checked the diagnostics of our model using residual plots:
 
 ```{r regression_assumptions, fig.width=11, fig.height=7, echo=FALSE, message=FALSE, warning=FALSE}
 # ------------------------------------------------------------------------------
@@ -448,6 +449,8 @@ par(old_par)
 The plots show no clear pattern in the residuals, a fairly stable spread, and no observations that appear strongly influential, although a few schools have higher leverage. The Q–Q plot shows some (likely non-severe) deviations from normality at the tails.
 
 ## **Final visualization and conclusion**
+
+Here our final visualization for the research question is shown: 
 
 ```{r final-plot, fig.width=14, fig.height=9.8, dpi=200, out.width="100%", fig.align="center", echo=FALSE, warning=FALSE, message=FALSE}
 # ------------------------------------------------------------------------------
@@ -835,22 +838,21 @@ final_plot <- wrap_elements(full = p_legend) / plot_spacer() / bottom_row +
 final_plot
 ```
 
-<u>Short description of the final visualization</u
+<u>Short description of the final visualization</u>
 
-The final visualization groups schools into ten bins of average socio-economic disadvantage. The left panel shows how fitted HAVO+ advice shares vary with within-school heterogeneity, while the right panel shows the regression slope for each bin; both include 95% confidence intervals. Showing these plots together helps readers compare the relationships across bins and see both their size and uncertainty.
+The final visualization groups schools into ten bins of average socio-economic disadvantage. The left panel shows how fitted HAVO+ advice shares vary with within-school heterogeneity, while the right panel shows the regression slope for each bin; both include 95% confidence intervals. Showing these plots together helps readers compare the relationships across bins and see both their size and uncertainty. With the explanation box, the notes at the bottom of the graphic, and the titles and subtitles, we have tried to include all the necessary information so that the graphic can be understood (for example, as a research poster at a research conference) without the need for further explanations or additional information. 
 
 <u>Conclusion</u>
 
-Within the middle range of average socio-economic disadvantage that we examine, greater within-school heterogeneity is associated with a higher proportion of students receiving final HAVO-or-higher advice, mainly among relatively less disadvantaged schools (bins 1–5). In these bins, a one-unit increase in heterogeneity is associated with approximately 2.5–3.5-percentage-point higher share of HAVO+ advice. The association is non-significant or generally weaker in more disadvantaged schools, although it remains positive in bin 10. These findings suggest that the relationship between socio-economic heterogeneity and educational advice varies with schools average disadvantage. 
+Within the middle range of average socio-economic disadvantage that we examine, greater within-school heterogeneity is associated with a higher proportion of students receiving final HAVO-or-higher advice, mainly among relatively less disadvantaged schools (bins 1–5). In these bins, a one-unit increase in heterogeneity is positively associated with approximately 2.5–3.5-percentage-point higher share of HAVO+ advice. The association is non-significant or generally weaker in more disadvantaged schools, although it remains positive in bin 10. These findings suggest that the relationship between socio-economic heterogeneity and educational advice varies with schools average disadvantage. 
 
-<u>Limitations on Interpretation</u>
+<u>Limitations on interpretation</u>
 
 It is important to mention that this is not evidence for a causal effect. While our analysis identifies a relationship, the estimated effect sizes and the differences between bins are not, on their own, sufficient to support policy recommendations. The findings may also depend on the replacement of suppressed counts and the trimming and binning choices. Furthermore, school-level heterogeneity may also obscure classroom-level effects, where mechanisms such as peer interactions and teaching practices are likely to have a more direct effect. These mechanisms are complex and may depend on how students are grouped and supported; a heterogeneous school population does not necessarily imply heterogeneous classrooms. Nevertheless, our findings are compatible with the hypothesis that socio-economic diversity may benefit the further educational opportunities of both advantaged and disadvantaged students.
 
-## **Note on AI use**
+## **AI use**
 
-While working on this project, we utilized artificial intelligence at various stages, particularly when creating the final plot. Throughout the process, we always provided as clear instructions as possible regarding exactly how the visualization should look and how the code should be written, and we had the system generate only small sections step by step—one after another, so that we could review each one. Through iterative feedback processes, we repeatedly had the visualization adjusted or made manual changes ourselves. We realized how important our own understanding of the data and the codebook was for the quality of the output, especially for the correct data preparation. We also realized that it is crucial for us to provide very clear guidance and describe in great detail exactly what we want. Filip worked primarily with Copilot in the terminal, and Henning worked primarily with the latest Claude model in the UvA AI Chat. 
+While working on this project, we utilized artificial intelligence at various stages, particularly when creating the code for the final plot, but also for creating exploratory plots and other small code snippets and general feedback. Throughout the process, we always provided as clear instructions as possible regarding exactly how the visualization should look and how the code should be written, and we had the system generate only small sections step by step, one after another, so that we could review and verify each code section in R. Through iterative feedback processes, we repeatedly had the visualization adjusted or made manual changes ourselves. We realized how important our own understanding of the data and the codebook was for the quality of the output, especially for the correct data preparation. We also realized that it is crucial for us to provide very clear guidance and describe in great detail exactly what we want. As input, we provided the AI with the codebook, the assignment objectives, and, depending on the phase, our code to date. Overall, AI has made our work much easier, and the quality of the results was very good (depending on the precision of our prompts and the clarity of our objectives). AI was also very helpful as a feedback partner for ideas and brainstorming.
 
-**Number of word (without titles, AI note, plots): **
-
+Filip worked primarily with the Copilot agent in the terminal, and Henning worked primarily with the latest Claude model (claude-sonnet-5.5) in the UvA AI Chat. 
 
