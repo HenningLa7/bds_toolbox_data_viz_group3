@@ -36,7 +36,7 @@ We examine whether schools with more socio-economically heterogeneous population
 
 > **How is within-school heterogeneity in socio-economic disadvantage associated with the proportion of students receiving final HAVO-or-higher advice, accounting for the school population’s average socio-economic disadvantage?**
 
-Note: Socio-economic disadvantage was measured ...
+Note: Socio-economic disadvantage was measured and calculated by Statistics Netherlands based on the following : the educational level of the parents ,the average educational level of all mothers at school, the country of origin of the parents, the length of the mother's stay in the Netherlands,whether parents are in debt restructuring.
 
 <u>Level of visualization</u>
 
