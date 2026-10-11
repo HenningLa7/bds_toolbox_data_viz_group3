@@ -36,7 +36,7 @@ We examine whether schools with more socio-economically heterogeneous population
 
 > **How is within-school heterogeneity in socio-economic disadvantage associated with the proportion of students receiving final HAVO-or-higher advice, accounting for the school population’s average socio-economic disadvantage?**
 
-Note: Socio-economic disadvantage was measured and calculated by Statistics Netherlands based on the following : the educational level of the parents ,the average educational level of all mothers at school, the country of origin of the parents, the length of the mother's stay in the Netherlands,whether parents are in debt restructuring.
+Note: Socio-economic disadvantage was measured and calculated by Statistics Netherlands based on the following: the educational level of the parents, the average educational level of all mothers at school, the country of origin of the parents, the length of the mother's stay in the Netherlands, and whether parents are in debt restructuring.
 
 <u>Level of visualization</u>
 
@@ -55,7 +55,10 @@ We combined the schoolweging (OVT column) and schooladviezen (INSTELLINGSCODE co
 After this initial preparation, the data looked like this:
 
 ```{r variable-prep, echo=FALSE, message=FALSE, warning=FALSE}
-# Save school form variables
+# ------------------------------------------------------------------------------
+# Initial data preparation
+
+# Save school from variables
 advice_cols <- c(
   "VSO", "PRO", "VMBO_B", "VMBO_B_K", "VMBO_K", "VMBO_K_GT",
   "VMBO_GT", "VMBO_GT_HAVO", "HAVO", "HAVO_VWO", "VWO"
@@ -66,12 +69,12 @@ havo_cols <- c("HAVO", "HAVO_VWO", "VWO")
 # counted before dropping NAs, so empty locations still count as locations
 keep_single <- function(df) {
   df |>
-    add_count(INSTELLINGSCODE, name = "n_locations") |>
-    filter(n_locations == 1L) |>
-    select(-n_locations)
+    add_count(.data$INSTELLINGSCODE, name = "n_locations") |>
+    filter(.data$n_locations == 1L) |>
+    select(-"n_locations")
 }
 
-# "00AP|C1" -> "00AP"
+# Seperate school IDs (e. g. 00AP|C1 to 00AP)
 school_context <- schoolweging |>
   transmute(
     INSTELLINGSCODE = str_remove(OVT, "\\|.*$"),
@@ -81,7 +84,7 @@ school_context <- schoolweging |>
   ) |>
   keep_single()
 
-# "<5" -> 2.5; share of advices that are HAVO or higher
+# Parse "<5" -> 2.5; share of advices that are HAVO or higher
 school_advice <- schooladviezen |>
   select(INSTELLINGSCODE, all_of(advice_cols)) |>
   mutate(
@@ -94,13 +97,16 @@ school_advice <- schooladviezen |>
 
 # One row per school
 school_data <- school_context |>
-  inner_join(school_advice, by = "INSTELLINGSCODE", 
-             relationship = "one-to-one") |>
+  inner_join(school_advice,
+    by = "INSTELLINGSCODE",
+    relationship = "one-to-one"
+  ) |>
   filter(
     !is.na(schoolweging), !is.na(spreiding),
     !is.na(HAVO_higher), n_students_advice > 0
   )
 
+# Look at the data
 kable(head(school_data)) |>
   kable_styling(bootstrap_options = c("striped", "hover"), full_width = TRUE)
 ```
@@ -121,7 +127,7 @@ With this plot we want to explain how we created the outome HAVO+ advice:
 # ------------------------------------------------------------------------------
 # First plot
 
-# Prepare the data for the first exploratory plot:
+# Prepare the data for the first exploratory plot
 advice_share <- schooladviezen |>
   semi_join(school_data, by = "INSTELLINGSCODE") |>
   select(all_of(advice_cols)) |>
@@ -137,7 +143,7 @@ advice_share <- schooladviezen |>
     )
   )
 
-# Create the first exploratory plot:
+# Create the first exploratory plot
 ggplot(advice_share, aes(x = advice, y = share, fill = havo_plus)) +
   geom_col() +
   geom_text(
@@ -153,10 +159,14 @@ ggplot(advice_share, aes(x = advice, y = share, fill = havo_plus)) +
   ) +
   annotate(
     "text",
-    x = 10, y = 22.8, label = "Final advice for HAVO or higher\n(our outcome variable)",
-    colour = "#2c7fb8", fontface = "bold"
+    x = 10,
+    y = 22.8,
+    label = "Final advice for HAVO or higher\n(our outcome variable)",
+    colour = "#2c7fb8",
+    fontface = "bold"
   ) +
-  scale_fill_manual(values = c("TRUE" = "#74add1", "FALSE" = "Medium Spring Green")) +
+  scale_fill_manual(values = c("TRUE" = "#74add1",
+                               "FALSE" = "Medium Spring Green")) +
   scale_y_continuous(
     breaks = seq(0, 20, 5), limits = c(0, 25),
     expand = expansion(mult = c(0, 0.02))
@@ -189,8 +199,8 @@ In this exploratory plot we look at the bivariate relations:
 # Second plot
 
 # Scatterplot: points sized by number of students per school
-scatter <- function(x, y, x_lab, y_lab) {
-  ggplot(school_data, aes({{ x }}, {{ y }}, size = n_students_school)) +
+scatter <- function(data, x, y, x_lab, y_lab) {
+  ggplot(data, aes({{ x }}, {{ y }}, size = .data$n_students_school)) +
     geom_point(alpha = 0.3, colour = "#2c7fb8") +
     scale_size_continuous(name = "Students per school", range = c(0.3, 3.5)) +
     guides(size = guide_legend(override.aes = list(alpha = 0.7))) +
@@ -203,12 +213,15 @@ dis <- "Avg. socio-economic disadvantage"
 adv <- "HAVO+ advice (%)"
 
 # Create second plot with patchwork
-(scatter(spreiding, HAVO_higher, het, adv) +
-    scatter(schoolweging, HAVO_higher, dis, adv) +
-    scatter(schoolweging, spreiding, dis, het)) +
+(scatter(school_data, spreiding, HAVO_higher, het, adv) +
+   scatter(school_data, schoolweging, HAVO_higher, dis, adv) +
+   scatter(school_data, schoolweging, spreiding, dis, het)) +
   plot_layout(guides = "collect") +
   plot_annotation(
-    title = "Exploring relationships between socio-economic school context and HAVO advice",
+    title = paste(
+      "Exploring relationships between socio-economic",
+      "school context and HAVO advice"
+    ),
     subtitle = "Two-variable relationships; each dot is one school",
     theme = theme_minimal()
   ) &
@@ -226,7 +239,7 @@ Because of the quadratic relation between avg. disadvantage and heterogeneity we
 
 ```{r avg_da_deciles, echo=FALSE, message=FALSE, warning=FALSE}
 # ------------------------------------------------------------------------------
-# Deciles of avg. disadvantage and mean heterogeneity 
+# Deciles of avg. disadvantage and mean heterogeneity
 
 # Investigatiion of schoolweging based on the mean of spreiding:
 deciles <- school_data |>
@@ -236,11 +249,13 @@ deciles <- school_data |>
     mean_weging = mean(schoolweging),
     mean_spreiding = mean(spreiding),
     n = n()
-  ) |> 
+  ) |>
   arrange(decile)
 
+# Look at the decile table
 kable(deciles, digits = 2) |>
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), full_width = TRUE)
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE)
 ```
 
 It can be seen that the mean heterogeneity for the lowest and highest avg. disadvantage deciles is substantially lower than for the other deciles. Therefore we excluded the lowest and highest deciles. Also, for the interaction models we centred the continuous avg. disadvantage variable and the heterogeneity variable. 
@@ -267,10 +282,13 @@ school_data <- school_data |>
     spreiding_c = spreiding - mean(spreiding)
   )
 
-kable(head(school_data |> 
-             select(INSTELLINGSCODE, n_students_school, 
-                    HAVO_higher, weging_trim_c,
-                    weging_bin, spreiding_c))) |>
+# Look at the finally prepared dataset
+kable(head(school_data |>
+  select(
+    INSTELLINGSCODE, n_students_school,
+    HAVO_higher, weging_trim_c,
+    weging_bin, spreiding_c
+  ))) |>
   kable_styling(bootstrap_options = c("striped", "hover"), full_width = TRUE)
 ```
 
@@ -284,16 +302,16 @@ In this plot we want to explain how we trimmed and grouped the avg. disadvantage
 
 # Define colours for all subsequent plots
 bin_colours <- c(
-  "1"  = "#071440",  # deep navy
-  "2"  = "#10286E",  # dark royal blue
-  "3"  = "#1A459F",  # royal blue
-  "4"  = "#2563C4",  # strong blue
-  "5"  = "#3F86DB",  # sky blue 
-  "6"  = "#4A9C8A",  # muted teal
-  "7"  = "#5BA777",  # muted green
-  "8"  = "#78B067",  # soft green
-  "9"  = "#9BB95E",  # olive green
-  "10" = "#BCC45C"   # muted yellow-green
+  "1"  = "#071440",
+  "2"  = "#10286E",
+  "3"  = "#1A459F",
+  "4"  = "#2563C4",
+  "5"  = "#3F86DB",
+  "6"  = "#4A9C8A",
+  "7"  = "#5BA777",
+  "8"  = "#78B067",
+  "9"  = "#9BB95E",
+  "10" = "#BCC45C"
 )
 
 # Define boundary info
@@ -309,8 +327,8 @@ bin_info <- school_data |>
   )
 
 # Define boundary colours
-bin_line_colour      <- "grey45"
-trim_line_colour     <- "red"
+bin_line_colour <- "grey45"
+trim_line_colour <- "red"
 outside_point_colour <- "grey75"
 
 # Preserve full dataset
@@ -365,7 +383,7 @@ ggplot(
   ) +
   scale_colour_manual(
     values = bin_colours,
-    labels= bin_labels,
+    labels = bin_labels,
     name = "Schoolweging bin",
     drop = FALSE
   ) +
@@ -373,10 +391,10 @@ ggplot(
     colour = guide_legend(
       title.position = "top",
       title.hjust = 0.5,
-      ncol = 5,              
+      ncol = 5,
       byrow = TRUE,
       override.aes = list(
-        size = 2,            
+        size = 2,
         alpha = 1
       )
     )
@@ -415,7 +433,9 @@ We look at a simple scatter plot of average socio-economic disadvantage and soci
 
 # Model 1
 model_1 <- lm(
-  HAVO_higher ~ spreiding_c * weging_bin, data = school_data)
+  HAVO_higher ~ spreiding_c * weging_bin,
+  data = school_data
+)
 summary(model_1)
 
 # Model 2
@@ -441,9 +461,9 @@ In a subsequent step we checked the diagnostics of our model using residual plot
 old_par <- par(mfrow = c(2, 2))
 plot(model_1, which = c(1, 2, 3, 5), ask = FALSE)
 par(old_par)
-# old_par <- par(mfrow = c(2, 2))
-# plot(model_2, which = c(1, 2, 3, 5), ask = FALSE)
-# par(old_par)
+# Model 2: old_par <- par(mfrow = c(2, 2))
+# Model 2: plot(model_2, which = c(1, 2, 3, 5), ask = FALSE)
+# Model 2: par(old_par)
 ```
 
 The plots show no clear pattern in the residuals, a fairly stable spread, and no observations that appear strongly influential, although a few schools have higher leverage. The Q–Q plot shows some (likely non-severe) deviations from normality at the tails.
@@ -452,7 +472,7 @@ The plots show no clear pattern in the residuals, a fairly stable spread, and no
 
 Here our final visualization for the research question is shown: 
 
-```{r final-plot, fig.width=14, fig.height=9.8, dpi=200, out.width="100%", fig.align="center", echo=FALSE, warning=FALSE, message=FALSE}
+```{r final_plot, fig.width=14, fig.height=9.8, dpi=200, out.width="100%", fig.align="center", echo=FALSE, warning=FALSE, message=FALSE}
 # ------------------------------------------------------------------------------
 # Final visualization - shared settings
 
@@ -470,13 +490,15 @@ legend_theme <- theme(
   legend.box.spacing = unit(4, "pt")
 )
 
+# Bin-specific slopes (of the centered heterogeneity, model 1) with 95% CIs
+# with the marginaleffects package
+slope_data <- marginaleffects::avg_slopes(
+  model_1,
+  variables = "spreiding_c", by = "weging_bin"
+)
+
 # ------------------------------------------------------------------------------
 # Final visualization plot - bottom left
-
-# Bin-specific slopes (of the centered heterogeneity, model 1) with 95% CIs
-slope_data <- marginaleffects::avg_slopes(
-  model_1, variables = "spreiding_c", by = "weging_bin"
-)
 
 # Fitted lines with 95% bands over each bin's observed range
 spreiding_mean <- mean(school_data$spreiding)
@@ -520,7 +542,8 @@ p_left <- ggplot(school_data, aes(x = spreiding_c, y = HAVO_higher)) +
     linewidth = 0.9
   ) +
   facet_wrap(
-    ~ weging_bin, ncol = 5,
+    ~weging_bin,
+    ncol = 5,
     labeller = labeller(weging_bin = ~ paste("Bin", .x))
   ) +
   scale_colour_manual(values = bin_colours, guide = "none") +
@@ -600,11 +623,13 @@ p_right <- ggplot(
     hjust = 0, nudge_x = 0.1, size = 2.5
   ) +
   annotate(
-    "text", x = 6.3, y = 5.2, label = box_text, hjust = 0, vjust = 1,
+    "text",
+    x = 6.3, y = 5.2, label = box_text, hjust = 0, vjust = 1,
     fontface = "bold", size = 3.8, lineheight = 0.95, colour = "black"
   ) +
   annotate(
-    "curve", x = 7, y = 3.95, xend = 5.98, yend = 3.3,
+    "curve",
+    x = 7, y = 3.95, xend = 5.98, yend = 3.3,
     curvature = -0.3, linewidth = 0.5, colour = "black",
     arrow = arrow(length = unit(0.2, "cm"), type = "closed")
   ) +
@@ -662,7 +687,7 @@ source_note <- paste0(
   "Data sources: DUO (Dienst Uitvoering Onderwijs) open education data, ",
   "schooladviezen 2024\u20132025 (duo.nl/open_onderwijsdata); ",
   "Onderwijsinspectie (Dutch Education Inspectorate), schoolweging ",
-  "2024\u20132025, calculated by Statistics Netherlands" ,
+  "2024\u20132025, calculated by Statistics Netherlands",
   "(onderwijsinspectie.nl)"
 )
 final_caption <- paste(model_note, source_note, sep = "\n")
@@ -670,10 +695,12 @@ final_caption <- paste(model_note, source_note, sep = "\n")
 # ------------------------------------------------------------------------------
 # Final visualization legend bins
 
-# Height of the legend panel in cm 
+# Height of the legend panel in cm
 top_cm <- 2.7
+
 # Distance in cm between the legend box and the plots below
 gap_cm <- 0.1
+
 # Approximate cm per y-unit of the panel (y runs from -1 to 1)
 cm_per_y <- (top_cm - 0.15) / 2
 
@@ -750,7 +777,6 @@ p_legend <- ggplot(bin_info) +
     xmin = 1.5, xmax = 98.5, ymin = -0.94, ymax = 0.94,
     fill = "grey97", colour = "grey30", linewidth = 0.3
   ) +
-  # explanation text
   geom_text(
     data = box_items,
     aes(x = 3.5, y = y, label = term),
@@ -763,7 +789,6 @@ p_legend <- ggplot(bin_info) +
     hjust = 0, vjust = 1, size = box_font, lineheight = 0.95,
     colour = "grey15"
   ) +
-  # compressed bin strip (white text in all bins)
   geom_tile(
     aes(x = tile_x, y = tile_yc, fill = weging_bin),
     width = tile_w * 0.94, height = tile_h
@@ -777,30 +802,36 @@ p_legend <- ggplot(bin_info) +
     colour = "white", size = 2.6
   ) +
   annotate(
-    "text", x = strip_x0 + 5 * tile_w, y = y_head, fontface = "bold",
+    "text",
+    x = strip_x0 + 5 * tile_w, y = y_head, fontface = "bold",
     size = 3.3, colour = "grey15",
     label = "10 equal-sized bins of avg. socio-economic disadvantage"
   ) +
   annotate(
-    "text", x = strip_x0, y = y_head, hjust = 0,
+    "text",
+    x = strip_x0, y = y_head, hjust = 0,
     size = 3.1, colour = "grey15", label = "\u2190"
   ) +
   annotate(
-    "text", x = strip_x0 + 1.2, y = y_head, hjust = 0,
+    "text",
+    x = strip_x0 + 1.2, y = y_head, hjust = 0,
     fontface = "italic", size = box_font, colour = "grey15",
     label = "Less disadvantaged"
   ) +
   annotate(
-    "text", x = strip_x0 + 10 * tile_w, y = y_head, hjust = 1,
+    "text",
+    x = strip_x0 + 10 * tile_w, y = y_head, hjust = 1,
     size = 3.1, colour = "grey15", label = "\u2192"
   ) +
   annotate(
-    "text", x = strip_x0 + 10 * tile_w - 1.2, y = y_head, hjust = 1,
+    "text",
+    x = strip_x0 + 10 * tile_w - 1.2, y = y_head, hjust = 1,
     fontface = "italic", size = box_font, colour = "grey15",
     label = "More disadvantaged"
   ) +
   annotate(
-    "text", x = strip_x0 + 5 * tile_w, y = -0.58, size = 2.7,
+    "text",
+    x = strip_x0 + 5 * tile_w, y = -0.58, size = 2.7,
     lineheight = 0.95, colour = "grey30", label = strip_note
   ) +
   scale_fill_manual(values = bin_colours) +
@@ -831,7 +862,7 @@ final_plot <- wrap_elements(full = p_legend) / plot_spacer() / bottom_row +
       ),
       plot.caption = element_text(
         colour = "grey40", size = 7.5, hjust = 0, lineheight = 1.1,
-        margin = margin(t = 1.5)   
+        margin = margin(t = 1.5)
       )
     )
   )
@@ -855,4 +886,3 @@ It is important to mention that this is not evidence for a causal effect. While 
 While working on this project, we utilized artificial intelligence at various stages, particularly when creating the code for the final plot, but also for creating exploratory plots and other small code snippets and general feedback. Throughout the process, we always provided as clear instructions as possible regarding exactly how the visualization should look and how the code should be written, and we had the system generate only small sections step by step, one after another, so that we could review and verify each code section in R. Through iterative feedback processes, we repeatedly had the visualization adjusted or made manual changes ourselves. We realized how important our own understanding of the data and the codebook was for the quality of the output, especially for the correct data preparation. We also realized that it is crucial for us to provide very clear guidance and describe in great detail exactly what we want. As input, we provided the AI with the codebook, the assignment objectives, and, depending on the phase, our code to date. Overall, AI has made our work much easier, and the quality of the results was very good (depending on the precision of our prompts and the clarity of our objectives). AI was also very helpful as a feedback partner for ideas and brainstorming.
 
 Filip worked primarily with the Copilot agent in the terminal, and Henning worked primarily with the latest Claude model (claude-sonnet-5.5) in the UvA AI Chat. 
-
